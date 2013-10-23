@@ -48,6 +48,10 @@ class LocalIndex(Index):
             # unknown distribution
             abort(codes.not_found)
 
+        if self.redis.hget(key, "_filename") is not None:
+            # already here
+            abort(codes.conflict)
+
         # write to cache
         path = join(self.cache_dir, filename)
         upload_file.save(path)

@@ -81,7 +81,6 @@ Cheddar saves data in several places:
 Further work:
 
  -  Support deletion of mistakenly uploaded packages. (Helps development)
- -  Validate duplicate package upload. (Helps development)
  -  Split package storage for the local index into different directories
     for release and pre-release versions. (Simplifies backup)
  -  Support "/simple/{name}/{version}" exact lookups in indexes. (Performance)
