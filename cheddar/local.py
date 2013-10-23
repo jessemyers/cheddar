@@ -11,6 +11,17 @@ from werkzeug import secure_filename
 from cheddar.index import Index
 
 
+def guess_name_and_version(filename):
+    """
+    Guess the distribution's name and version from its filename.
+    """
+    root = filename
+    for extension in [".tar.gz", ".zip"]:
+        if root.endswith(extension):
+            root = root[:- len(extension)]
+    return root.split("-", 1)
+
+
 class LocalIndex(Index):
     """
     Support register, upload, and retreival of packages.
@@ -42,7 +53,8 @@ class LocalIndex(Index):
         - Record location in metadata
         """
         filename = secure_filename(upload_file.filename)
-        name, version = self._parse_name_and_version(filename)
+        # Crude. A better approach would be to parse the egg-info/PKG-INFO file.
+        name, version = guess_name_and_version(filename)
         key = self._release_key(name, version)
         if not self.redis.exists(key):
             # unknown distribution
@@ -83,16 +95,3 @@ class LocalIndex(Index):
 
     def _release_key(self, name, version):
         return "cheddar.local.{}-{}".format(name, version)
-
-    def _parse_name_and_version(self, filename):
-        """
-        Guess the distribution's name and version from its filename.
-
-        This is quite crude. A better approach would be to read the
-        egg-info/PKG-INFO file and parse its contents.
-        """
-        root = filename
-        for extension in [".tar.gz", ".zip"]:
-            if root.endswith(extension):
-                root = root[:- len(extension)]
-        return root.split("-", 1)
