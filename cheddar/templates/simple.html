@@ -1,0 +1,10 @@
+<html>
+  <head>
+    <title>Cheddar Package Index</title>
+  </head>
+  <body>
+    {% for package in packages %}
+    <a href="/simple/{{ package }}">{{ package }}</a></br>
+    {% endfor %}
+  </body>
+</html>

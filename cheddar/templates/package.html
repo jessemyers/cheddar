@@ -1,0 +1,10 @@
+<html>
+  <head>
+    <title>Cheddar Package Index</title>
+  </head>
+  <body>
+    {% for release, path in releases.iteritems() %}
+    <a href="../../{{ path }}">{{ release }}</a></br>
+    {% endfor %}
+  </body>
+</html>
