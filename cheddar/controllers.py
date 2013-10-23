@@ -39,7 +39,7 @@ def create_routes(app):
         Lists known packages.
         """
         return render_template("simple.html",
-                               packages=app.index.get_local_packages())
+                               packages=sorted(app.index.get_local_packages()))
 
     @app.route("/simple/<name>/")
     @app.route("/simple/<name>")
