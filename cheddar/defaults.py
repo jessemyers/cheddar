@@ -24,4 +24,6 @@ REMOTE_CACHE_DIR = "/var/tmp/cheddar-{}/remote".format(getuser())
 # Where should we cache local package data?
 LOCAL_CACHE_DIR = "/var/tmp/cheddar-{}/local".format(getuser())
 
-LOG_CONFIG_FILE = "logging.conf"
+LOG_FILE = "/var/log/cheddar.log"
+LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+LOG_LEVEL = "DEBUG"

@@ -13,6 +13,7 @@ class CombinedIndex(Index):
     """
     Combined local and remote index.
     """
+
     def __init__(self, app):
         self.local = LocalIndex(app)
         self.remote = CachedRemoteIndex(app)
@@ -23,7 +24,6 @@ class CombinedIndex(Index):
         Register to the local index.
         """
         local = self.local.register(name, version, data)
-        self.logger.debug("Register", local)
         return local
 
     def upload(self, upload_file):
@@ -37,7 +37,8 @@ class CombinedIndex(Index):
         Show packages in the local index.
         """
         local = self.local.get_local_packages()
-        self.logger.debug("Register", local)
+        self.logger.info("Getting local packages")
+        self.logger.debug(local)
         return local
 
     def get_available_releases(self, name):
@@ -50,6 +51,7 @@ class CombinedIndex(Index):
         # local index first and selectively not check the remote index,
         # at the expense of not seeing remote packages that were uploaded
         # locally
+        self.logger.info("Available local releases list")
         try:
             releases = self.remote.get_available_releases(name)
         except HTTPException as error:
@@ -58,7 +60,7 @@ class CombinedIndex(Index):
                 raise
             releases = {}
         releases.update(self.local.get_available_releases(name))
-        self.logger.debug("Available conbined releases list", releases)
+        self.logger.debug(releases)
         return releases
 
     def get_release(self, path, local):

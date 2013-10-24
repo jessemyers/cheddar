@@ -123,5 +123,4 @@ def create_routes(app):
         credentials for register, so this is *not* authenticated.
         """
         data = {key: values[0] for key, values in request.form.iterlists()}
-        app.index.register(data["name"], data["version"], data)
         return ""

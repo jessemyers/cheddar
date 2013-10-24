@@ -51,6 +51,7 @@ class LocalIndex(Index):
 
         if self.redis.hget(key, "_filename") and self.storage.exists(filename):
             # already here
+            self.logger.error("Upload failed", str(codes.conflict))
             abort(codes.conflict)
 
         # write to cache
@@ -60,18 +61,20 @@ class LocalIndex(Index):
         self.redis.hset(key, "_filename", filename)
 
     def get_local_packages(self):
+        self.logger.info("Getting local packages")
         local_packages = self.redis.smembers(self._packages_key())
-        self.logger.debug("Local packages list", local_packages)
+        self.logger.debug(local_packages)
         return local_packages
 
     def get_available_releases(self, name):
+        self.logger.info("Available local releases list")
         releases = {}
         for version in self.redis.smembers(self._releases_key(name)):
             filename = self.redis.hget(self._release_key(name, version), "_filename")
             if filename is not None:
                 path = "local/{}".format(filename)
                 releases[filename] = path
-        self.logger.debug("Available local releases list", releases)
+        self.logger.debug(releases)
         return releases
 
     def get_release(self, path, local):

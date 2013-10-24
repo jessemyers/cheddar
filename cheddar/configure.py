@@ -2,8 +2,7 @@
 Configure the Flask application.
 """
 import logging
-import logging.config
-import yaml
+from logging.handlers import TimedRotatingFileHandler
 
 from flask import request
 from redis import Redis
@@ -29,7 +28,13 @@ def configure_app(app, debug=False, testing=False):
     app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"])
     app.index = CombinedIndex(app)
 
-    logging.config.dictConfig(yaml.load(open(app.config['LOG_CONFIG_FILE'])))
+    file_handler = TimedRotatingFileHandler(app.config["LOG_FILE"], when='d')
+    file_handler.setLevel(app.config["LOG_LEVEL"])
+    file_handler.setFormatter(logging.Formatter(
+        app.config["LOG_FORMAT"]
+    ))
+
+    app.logger.addHandler(file_handler)
 
     if app.config.get('FORCE_READ_REQUESTS'):
         # read the request fully so that nginx and uwsgi play nice
