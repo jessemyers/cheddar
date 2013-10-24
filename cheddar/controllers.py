@@ -60,6 +60,16 @@ def create_routes(app):
         return render_template("package.html",
                                releases=sorted_releases)
 
+    @app.route("/simple/<name>/<version>/", methods=["DELETE"])
+    @app.route("/simple/<name>/<version>", methods=["DELETE"])
+    @authenticated
+    def remove_package(name, version):
+        """
+        Delete distribution data. Requires auth.
+        """
+        app.index.remove_release(name, version)
+        return ""
+
     @app.route("/local/<path:path>/")
     @app.route("/local/<path:path>")
     def get_local_distribution(path):

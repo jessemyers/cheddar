@@ -62,6 +62,12 @@ class RemoteIndex(Index):
             abort(codes.not_found)
         return response.content, response.headers["Content-Type"]
 
+    def remove_release(self, name, version):
+        """
+        Unsupported.
+        """
+        pass
+
 
 class CachedRemoteIndex(RemoteIndex):
     """

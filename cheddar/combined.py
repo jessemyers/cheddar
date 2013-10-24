@@ -62,3 +62,9 @@ class CombinedIndex(Index):
             return self.local.get_release(path, local)
         else:
             return self.remote.get_release(path, local)
+
+    def remove_release(self, name, version):
+        """
+        Remove local release.
+        """
+        self.local.remove_release(name, version)

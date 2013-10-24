@@ -80,7 +80,6 @@ Cheddar saves data in several places:
 
 Further work:
 
- -  Support deletion of mistakenly uploaded packages. (Helps development)
  -  Support "/simple/{name}/{version}" exact lookups in indexes. (Performance)
  -  Use logging. (Diagnostics)
  -  Add some tests using [mockredis][mockredis]

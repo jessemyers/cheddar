@@ -75,6 +75,28 @@ class LocalIndex(Index):
             abort(codes.not_found)
         return result
 
+    def remove_release(self, name, version):
+        """
+        Remove a distribution.
+
+        - Remove from local storage.
+        - Remove register record.
+        - Remove version from releases list.
+        - If no versions are left, remove from packages list.
+        """
+        key = self._release_key(name, version)
+        if not self.redis.exists(key):
+            abort(codes.not_found)
+
+        filename = self.redis.hget(key, "_filename")
+        self.storage.remove(filename)
+
+        # Here be race conditions...
+        self.redis.delete(key)
+        self.redis.srem(self._releases_key(name), version)
+        if self.redis.scard(self._releases_key(name)) == 0:
+            self.redis.srem(self._packages_key(), name)
+
     def _packages_key(self):
         return "cheddar.local"
 

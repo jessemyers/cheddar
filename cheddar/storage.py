@@ -1,7 +1,7 @@
 """
 Implements distribution file storage.
 """
-from os import makedirs
+from os import makedirs, remove
 from os.path import basename, exists, isdir, join
 
 from magic import from_buffer
@@ -49,6 +49,16 @@ class DistributionStorage(object):
         self._make_base_dirs()
         with open(self.compute_path(name), "wb") as file_:
             file_.write(data)
+
+    def remove(self, name):
+        """
+        Write entry to storage.
+        """
+        try:
+            remove(self.compute_path(name))
+            return True
+        except OSError:
+            return False
 
     def compute_path(self, path):
         """

@@ -52,3 +52,12 @@ class Index(object):
         :returns: a pair of content data and content type for a release
         """
         pass
+
+    @abstractmethod
+    def remove_release(self, name, version):
+        """
+        :param name: the distribution name
+        :param version: the distribution version
+        :returns: a pair of content data and content type for a release
+        """
+        pass
