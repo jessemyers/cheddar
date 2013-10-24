@@ -1,26 +1,12 @@
 """
 Implements a local package index.
 """
-from os import makedirs
-from os.path import isdir, join
-
 from flask import abort
-from magic import from_buffer
 from requests import codes
 from werkzeug import secure_filename
 
 from cheddar.index import Index
-
-
-def guess_name_and_version(filename):
-    """
-    Guess the distribution's name and version from its filename.
-    """
-    root = filename
-    for extension in [".tar.gz", ".zip"]:
-        if root.endswith(extension):
-            root = root[:- len(extension)]
-    return root.split("-", 1)
+from cheddar.versions import guess_name_and_version
 
 
 class LocalIndex(Index):
@@ -29,9 +15,7 @@ class LocalIndex(Index):
     """
     def __init__(self, app):
         self.redis = app.redis
-        self.cache_dir = app.config["LOCAL_CACHE_DIR"]
-        if not isdir(self.cache_dir):
-            makedirs(self.cache_dir)
+        self.storage = app.local_storage
 
     def register(self, name, version, data):
         """
@@ -63,13 +47,12 @@ class LocalIndex(Index):
             # unknown distribution
             abort(codes.not_found)
 
-        if self.redis.hget(key, "_filename") is not None:
+        if self.redis.hget(key, "_filename") and self.storage.exists(filename):
             # already here
             abort(codes.conflict)
 
         # write to cache
-        path = join(self.cache_dir, filename)
-        upload_file.save(path)
+        self.storage.write(filename, upload_file.read())
 
         # save filename in dictionary
         self.redis.hset(key, "_filename", filename)
@@ -87,10 +70,10 @@ class LocalIndex(Index):
         return releases
 
     def get_release(self, path, local):
-        with open(join(self.cache_dir, path)) as file_:
-            content_data = file_.read()
-            content_type = from_buffer(content_data, mime=True)
-            return content_data, content_type
+        result = self.storage.read(path)
+        if result is None:
+            abort(codes.not_found)
+        return result
 
     def _packages_key(self):
         return "cheddar.local"

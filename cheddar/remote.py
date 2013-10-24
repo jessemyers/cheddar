@@ -2,13 +2,11 @@
 Implements a remote (proxy) package index.
 """
 from json import dumps, loads
-from os import makedirs
-from os.path import abspath, basename, exists, isdir, join
+from os.path import abspath, join
 from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
 from flask import abort
-from magic import from_buffer
 from requests import codes, get
 from werkzeug.exceptions import HTTPException
 
@@ -75,11 +73,8 @@ class CachedRemoteIndex(RemoteIndex):
     def __init__(self, app):
         super(CachedRemoteIndex, self).__init__(app)
         self.redis = app.redis
+        self.storage = app.remote_storage
         self.releases_ttl = app.config["RELEASES_TTL"]
-        self.cache_dir = app.config["REMOTE_CACHE_DIR"]
-        # cache dirname should contain current username to minimize conflicts
-        if not isdir(self.cache_dir):
-            makedirs(self.cache_dir)
 
     def get_available_releases(self, name):
         """
@@ -111,20 +106,12 @@ class CachedRemoteIndex(RemoteIndex):
         """
         Adds pip "download cache" style caching to content data and content type.
         """
-        cache_path = join(self.cache_dir, basename(path))
-
-        # Check cache
-        if exists(cache_path):
-            with open(cache_path) as file_:
-                content_data = file_.read()
-                content_type = from_buffer(content_data, mime=True)
-                return content_data, content_type
+        cached = self.storage.read(path)
+        if cached is not None:
+            return cached
 
         content_data, content_type = super(CachedRemoteIndex, self).get_release(path, local)
-
-        # Write to cache
-        with open(cache_path, "wb") as file_:
-            file_.write(content_data)
+        self.storage.write(path, content_data)
 
         return content_data, content_type
 
