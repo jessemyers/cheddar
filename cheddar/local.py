@@ -16,6 +16,7 @@ class LocalIndex(Index):
     def __init__(self, app):
         self.redis = app.redis
         self.storage = app.local_storage
+        self.logger = app.logger
 
     def register(self, name, version, data):
         """
@@ -25,6 +26,7 @@ class LocalIndex(Index):
         - Record name, version in list of release for package
         - Record metadata for release
         """
+        self.logger.debug("Registering local distribution", name, version, data)
         self.redis.sadd(self._packages_key(), name)
         self.redis.sadd(self._releases_key(name), version)
         self.redis.hmset(self._release_key(name, version), data)
@@ -58,7 +60,9 @@ class LocalIndex(Index):
         self.redis.hset(key, "_filename", filename)
 
     def get_local_packages(self):
-        return self.redis.smembers(self._packages_key())
+        local_packages = self.redis.smembers(self._packages_key())
+        self.logger.debug("Local packages list", local_packages)
+        return local_packages
 
     def get_available_releases(self, name):
         releases = {}
@@ -67,12 +71,15 @@ class LocalIndex(Index):
             if filename is not None:
                 path = "local/{}".format(filename)
                 releases[filename] = path
+        self.logger.debug("Available local releases list", releases)
         return releases
 
     def get_release(self, path, local):
         result = self.storage.read(path)
         if result is None:
+            self.logger.error("Releases not found", codes.not_found)
             abort(codes.not_found)
+        self.logger.debug("Releases list", result)
         return result
 
     def remove_release(self, name, version):

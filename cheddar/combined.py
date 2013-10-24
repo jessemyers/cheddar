@@ -16,12 +16,15 @@ class CombinedIndex(Index):
     def __init__(self, app):
         self.local = LocalIndex(app)
         self.remote = CachedRemoteIndex(app)
+        self.logger = app.logger
 
     def register(self, name, version, data):
         """
         Register to the local index.
         """
-        return self.local.register(name, version, data)
+        local = self.local.register(name, version, data)
+        self.logger.debug("Register", local)
+        return local
 
     def upload(self, upload_file):
         """
@@ -33,7 +36,9 @@ class CombinedIndex(Index):
         """
         Show packages in the local index.
         """
-        return self.local.get_local_packages()
+        local = self.local.get_local_packages()
+        self.logger.debug("Register", local)
+        return local
 
     def get_available_releases(self, name):
         """
@@ -49,9 +54,11 @@ class CombinedIndex(Index):
             releases = self.remote.get_available_releases(name)
         except HTTPException as error:
             if error.code != codes.not_found:
+                self.logger.error("Available combined releases not found", codes.not_found)
                 raise
             releases = {}
         releases.update(self.local.get_available_releases(name))
+        self.logger.debug("Available conbined releases list", releases)
         return releases
 
     def get_release(self, path, local):

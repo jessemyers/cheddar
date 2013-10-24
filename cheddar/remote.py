@@ -20,6 +20,7 @@ class RemoteIndex(Index):
     def __init__(self, app):
         self.index_url = app.config["INDEX_URL"]
         self.get_timeout = app.config["GET_TIMEOUT"]
+        self.logger = app.logger
 
     def register(self, name, version, data):
         """
@@ -105,7 +106,7 @@ class CachedRemoteIndex(RemoteIndex):
             raise
         else:
             self.redis.setex(key, dumps(computed_releases), self.releases_ttl)
-
+        self.logger.debug("Available remote releases list", computed_releases)
         return computed_releases
 
     def get_release(self, path, local):
@@ -118,7 +119,7 @@ class CachedRemoteIndex(RemoteIndex):
 
         content_data, content_type = super(CachedRemoteIndex, self).get_release(path, local)
         self.storage.write(path, content_data)
-
+        self.logger.debug("Remote releases list", content_data, content_type)
         return content_data, content_type
 
 
