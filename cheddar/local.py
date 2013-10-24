@@ -49,7 +49,14 @@ class LocalIndex(Index):
         try:
             # derive name and version from sdist
             distribution = SDist(path)
-            key = self._release_key(distribution.name, distribution.version)
+            name, version = distribution.name, distribution.version
+            expected_name, expected_version = guess_name_and_version(filename)
+
+            # make file names match expectations
+            if name != expected_name or version != expected_version:
+                abort(codes.bad_request)
+
+            key = self._release_key(name, version)
 
             # ensure that register was called
             if not self.redis.exists(key):
