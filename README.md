@@ -87,8 +87,6 @@ Further work:
  -  Use logging. (Diagnostics)
  -  Add some tests using [mockredis][mockredis]
  -  Figure out why setuptools "register" doesn't support authentication.
- -  Determine if there's any need for "download cache" style caching for the
-    remote index.
  -  Parse PKG-INFO data on upload to local index for better accuracy.
  
  [mockredis]: https://github.com/locationlabs/mockredis

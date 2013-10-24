@@ -5,6 +5,7 @@ from os import makedirs
 from os.path import isdir, join
 
 from flask import abort
+from magic import from_buffer
 from requests import codes
 from werkzeug import secure_filename
 
@@ -53,8 +54,10 @@ class LocalIndex(Index):
         - Record location in metadata
         """
         filename = secure_filename(upload_file.filename)
+
         # Crude. A better approach would be to parse the egg-info/PKG-INFO file.
         name, version = guess_name_and_version(filename)
+
         key = self._release_key(name, version)
         if not self.redis.exists(key):
             # unknown distribution
@@ -85,7 +88,9 @@ class LocalIndex(Index):
 
     def get_release(self, path, local):
         with open(join(self.cache_dir, path)) as file_:
-            return file_.read(), "application/octet-stream"
+            content_data = file_.read()
+            content_type = from_buffer(content_data, mime=True)
+            return content_data, content_type
 
     def _packages_key(self):
         return "cheddar.local"

@@ -21,6 +21,7 @@ setup(name='cheddar',
           'redis>=2.8.0',
           'requests>=2.0.0',
           'BeautifulSoup>=3.2.1',
+          'python-magic>=0.4.6',
       ],
       tests_require=[
       ],

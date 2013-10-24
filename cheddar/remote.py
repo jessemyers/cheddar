@@ -3,12 +3,12 @@ Implements a remote (proxy) package index.
 """
 from json import dumps, loads
 from os import makedirs
-from os.path import abspath, exists, isdir, join
-from urllib import quote
+from os.path import abspath, basename, exists, isdir, join
 from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
 from flask import abort
+from magic import from_buffer
 from requests import codes, get
 from werkzeug.exceptions import HTTPException
 
@@ -111,22 +111,20 @@ class CachedRemoteIndex(RemoteIndex):
         """
         Adds pip "download cache" style caching to content data and content type.
         """
-        key = quote(make_absolute_url(self.index_url, path), "")
-
-        content_file = join(self.cache_dir, key)
-        content_type_file = join(self.cache_dir, key + ".content-type")
+        cache_path = join(self.cache_dir, basename(path))
 
         # Check cache
-        if exists(content_file) and exists(content_type_file):
-            with open(content_file) as content, open(content_type_file) as content_type:
-                return content.read(), content_type.read()
+        if exists(cache_path):
+            with open(cache_path) as file_:
+                content_data = file_.read()
+                content_type = from_buffer(content_data, mime=True)
+                return content_data, content_type
 
         content_data, content_type = super(CachedRemoteIndex, self).get_release(path, local)
 
         # Write to cache
-        with open(content_file, "wb") as content_file_, open(content_type_file, "w") as content_type_file_:
-            content_file_.write(content_data)
-            content_type_file_.write(content_type)
+        with open(cache_path, "wb") as file_:
+            file_.write(content_data)
 
         return content_data, content_type
 
