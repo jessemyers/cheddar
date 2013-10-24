@@ -46,21 +46,31 @@ class RemoteIndex(Index):
         """
         Request package data from remote index and parse HTML.
         """
+        self.logger.info("Getting available remote releases")
+
         url = "{}/{}".format(self.index_url, name)
         response = get(url, timeout=self.get_timeout)
         if response.status_code != codes.ok:
+            self.logger.info("Available remote releases not found")
+            self.logger.debug(codes.not_found)
             abort(codes.not_found)
         soup = BeautifulSoup(response.text)
 
-        return {node.text: "remote" + get_absolute_path(self.index_url, node["href"]) for node in soup.findAll("a")}
+        releases = {node.text: "remote" + get_absolute_path(self.index_url, node["href"]) for node in soup.findAll("a")}
+        self.logger.debug(releases)
+        return releases
 
     def get_release(self, path, local):
         """
         Request distribution data for path on the index server.
         """
+        self.logger.info("Getting remote release")
         response = get(make_absolute_url(self.index_url, path), timeout=self.get_timeout)
         if response.status_code != codes.ok:
+            self.logger.info("Release not found")
+            self.logger.debug(codes.not_found)
             abort(codes.not_found)
+        self.logger.debug(response.content)
         return response.content, response.headers["Content-Type"]
 
     def remove_release(self, name, version):
@@ -82,6 +92,7 @@ class CachedRemoteIndex(RemoteIndex):
         self.redis = app.redis
         self.storage = app.remote_storage
         self.releases_ttl = app.config["RELEASES_TTL"]
+        self.logger = app.logger
 
     def get_available_releases(self, name):
         """
@@ -89,6 +100,7 @@ class CachedRemoteIndex(RemoteIndex):
 
         Currently, does not implement negative caching.
         """
+        self.logger.info("Getting available cached releases")
         key = "cheddar.remote.{}".format(name)
 
         # Check cache
@@ -103,10 +115,11 @@ class CachedRemoteIndex(RemoteIndex):
             if error.code == codes.not_found:
                 # Cache negative
                 self.redis.setex(key, dumps({}), self.releases_ttl)
+            self.logger.critical("error computing releases", exc_info=True)
             raise
         else:
             self.redis.setex(key, dumps(computed_releases), self.releases_ttl)
-        self.logger.debug("Available remote releases list", computed_releases)
+        self.logger.debug(computed_releases)
         return computed_releases
 
     def get_release(self, path, local):

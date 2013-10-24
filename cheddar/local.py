@@ -39,6 +39,8 @@ class LocalIndex(Index):
         - Write to local cache
         - Record location in metadata
         """
+        self.logger.info("Starting local upload")
+        self.logger.debug(upload_file)
         filename = secure_filename(upload_file.filename)
 
         # Crude. A better approach would be to parse the egg-info/PKG-INFO file.
@@ -51,7 +53,7 @@ class LocalIndex(Index):
 
         if self.redis.hget(key, "_filename") and self.storage.exists(filename):
             # already here
-            self.logger.error("Upload failed", str(codes.conflict))
+            self.logger.error("Upload failed")
             abort(codes.conflict)
 
         # write to cache
