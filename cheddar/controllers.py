@@ -3,12 +3,11 @@ URL mappings for package index functionality.
 """
 from collections import OrderedDict
 from functools import wraps
-from pkg_resources import parse_version
 
 from flask import abort, make_response, render_template, request
 
 from cheddar.auth import check_authentication
-from cheddar.local import guess_name_and_version
+from cheddar.versions import sort_key
 
 
 def create_routes(app):
@@ -53,10 +52,6 @@ def create_routes(app):
         Lists known releases and their locations.
         """
         releases = app.index.get_available_releases(name)
-
-        def sort_key(name):
-            _, version = guess_name_and_version(name)
-            return parse_version(version)
 
         sorted_releases = OrderedDict()
         for name in sorted(releases.keys(), key=sort_key):

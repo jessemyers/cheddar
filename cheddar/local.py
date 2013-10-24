@@ -6,17 +6,7 @@ from requests import codes
 from werkzeug import secure_filename
 
 from cheddar.index import Index
-
-
-def guess_name_and_version(filename):
-    """
-    Guess the distribution's name and version from its filename.
-    """
-    root = filename
-    for extension in [".tar.gz", ".zip"]:
-        if root.endswith(extension):
-            root = root[:- len(extension)]
-    return root.split("-", 1)
+from cheddar.versions import guess_name_and_version
 
 
 class LocalIndex(Index):
@@ -57,7 +47,7 @@ class LocalIndex(Index):
             # unknown distribution
             abort(codes.not_found)
 
-        if self.redis.hget(key, "_filename") is not None:
+        if self.redis.hget(key, "_filename") and self.storage.exists(filename):
             # already here
             abort(codes.conflict)
 
