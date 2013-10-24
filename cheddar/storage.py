@@ -47,8 +47,10 @@ class DistributionStorage(object):
         Write entry to storage.
         """
         self._make_base_dirs()
-        with open(self.compute_path(name), "wb") as file_:
+        path = self.compute_path(name)
+        with open(path, "wb") as file_:
             file_.write(data)
+        return path
 
     def remove(self, name):
         """

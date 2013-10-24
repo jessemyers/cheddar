@@ -108,9 +108,5 @@ Further work:
  -  The `setuptools` register command does not send Basic Auth credentials.
  
     It would be much better to password-protect the register controller.
-    
- -  The upload controller guesses a package's name and version from the filename.
- 
-    It would be better to parse the PKG-INFO data in the upload.
  
  [mockredis]: https://github.com/locationlabs/mockredis
