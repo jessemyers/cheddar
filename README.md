@@ -4,13 +4,28 @@ PyPI clone with Flask and Redis
 
 ## Features
 
-Cheddar supports:
+Cheddar aims to simplify Python development within organizations that work with both private
+and public Python distributions.
 
- -  A *local* package index for [setuptools][setuptools] `register` and `upload` commands.
- -  A *remote* package index for proxying to another package index (e.g. to `pypi.python.org`)
- -  A *caching* implementation for proxies packages to reduce latency and minimize the effects
-    of outages in the remote index.
- -  A *combined* index that supports both local and remote/cached indexes.
+Cheddar includes:
+
+ -  A *local* package index for internal development, supporting [setuptools][setuptools]'s
+    `register` and `upload` commands.
+    
+ -  A *remote* package index that proxies to a public repository (such as `pypi.python.org`)
+    and *caches* packages and release listings locally to reduce latency and minimize the effect
+    of downtime byy the public repository.
+    
+ -  A *combined* package index that combines the best of the local and remote implementations.
+ 
+In addition, Cheddar supports a few features that simplify management within an organization:
+
+ -  Packages are stored locally in separate directories for pre-releases and releases, simplifying
+    backup strategies that wish to ignore transitive development builds.
+    
+ -  Duplicate package uploads return a predictable HTTP `409 Conflict` error.
+
+ -  Mistakenly uploaded packages may be deleted using a simple, RESTful API.
 
  [setuptools]: http://pythonhosted.org/setuptools/
 
@@ -80,10 +95,22 @@ Cheddar saves data in several places:
 
 Further work:
 
- -  Support "/simple/{name}/{version}" exact lookups in indexes. (Performance)
- -  Use logging. (Diagnostics)
- -  Add some tests using [mockredis][mockredis]
- -  Figure out why setuptools "register" doesn't support authentication.
- -  Parse PKG-INFO data on upload to local index for better accuracy.
+ -  A little diagnostic logging would go a long way.
+ 
+ -  Some unit tests using [mockredis][mockredis] would make it easier to manage changes.
+
+ -  A `pip` installation using an extact version match will query a "/simple/{name}/{version}" URL
+    before falling back to a general "/simple/{name}" search.
+    
+    It would be trivial to implement the exact match controller, but it's not clear what response
+    `pip` expects in this case.
+    
+ -  The `setupptools` register command does not send Basic Auth credentials.
+ 
+    It would be much better to password-protect the register controller.
+    
+ -  The upload controller guesses a package's name and version from the filename.
+ 
+    It would be better to parse the PKG-INFO data in the upload.
  
  [mockredis]: https://github.com/locationlabs/mockredis
