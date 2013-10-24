@@ -1,6 +1,7 @@
 """
 Implements a combined local and remote package index.
 """
+from requests import codes
 from werkzeug.exceptions import HTTPException
 
 from cheddar.index import Index
@@ -47,7 +48,7 @@ class CombinedIndex(Index):
         try:
             releases = self.remote.get_available_releases(name)
         except HTTPException as error:
-            if error.code != 404:
+            if error.code != codes.not_found:
                 raise
             releases = {}
         releases.update(self.local.get_available_releases(name))

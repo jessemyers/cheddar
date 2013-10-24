@@ -7,6 +7,7 @@ from redis import Redis
 from cheddar import defaults
 from cheddar.combined import CombinedIndex
 from cheddar.controllers import create_routes
+from cheddar.storage import DistributionStorage
 
 
 def configure_app(app, debug=False, testing=False):
@@ -20,6 +21,8 @@ def configure_app(app, debug=False, testing=False):
     _configure_from_environment(app)
 
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
+    app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"])
+    app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"])
     app.index = CombinedIndex(app)
 
     if app.config.get('FORCE_READ_REQUESTS'):
