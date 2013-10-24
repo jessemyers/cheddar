@@ -38,6 +38,6 @@ def is_pre_release(basename):
     # 1.0.1    -> ('00000001', '00000000', '00000001', '*final')
     try:
         [int(part) for part in parsed_version if part != "*final"]
-        return True
-    except ValueError:
         return False
+    except ValueError:
+        return True
