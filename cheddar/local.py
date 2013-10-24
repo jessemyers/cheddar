@@ -3,6 +3,7 @@ Implements a local package index.
 """
 from flask import abort
 from requests import codes
+from pkginfo import SDist
 from werkzeug import secure_filename
 
 from cheddar.index import Index
@@ -34,28 +35,35 @@ class LocalIndex(Index):
         Upload a distribution:
 
         - Validate name and version
-        - Write to local cache
+        - Write to local storage
         - Record location in metadata
         """
         filename = secure_filename(upload_file.filename)
 
-        # Crude. A better approach would be to parse the egg-info/PKG-INFO file.
-        name, version = guess_name_and_version(filename)
-
-        key = self._release_key(name, version)
-        if not self.redis.exists(key):
-            # unknown distribution
-            abort(codes.not_found)
-
-        if self.redis.hget(key, "_filename") and self.storage.exists(filename):
-            # already here
+        if self.storage.exists(filename):
             abort(codes.conflict)
 
-        # write to cache
-        self.storage.write(filename, upload_file.read())
+        # write to storage first because SDist needs a file path
+        path = self.storage.write(filename, upload_file.read())
 
-        # save filename in dictionary
-        self.redis.hset(key, "_filename", filename)
+        try:
+            # derive name and version from sdist
+            distribution = SDist(path)
+            key = self._release_key(distribution.name, distribution.version)
+
+            # ensure that register was called
+            if not self.redis.exists(key):
+                abort(codes.not_found)
+
+            # ensure that upload wasn't already performed
+            if self.redis.hget(key, "_filename"):
+                abort(codes.conflict)
+        except:
+            self.storage.remove(filename)
+            raise
+        else:
+            # save filename in dictionary
+            self.redis.hset(key, "_filename", filename)
 
     def get_local_packages(self):
         return self.redis.smembers(self._packages_key())

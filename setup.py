@@ -22,6 +22,7 @@ setup(name='cheddar',
           'requests>=2.0.0',
           'BeautifulSoup>=3.2.1',
           'python-magic>=0.4.6',
+          'pkginfo>=1.1',
       ],
       tests_require=[
       ],
