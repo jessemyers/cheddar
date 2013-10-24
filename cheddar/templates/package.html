@@ -1,10 +1,18 @@
-<html>
-  <head>
-    <title>Cheddar Package Index</title>
-  </head>
-  <body>
-    {% for release, path in releases.iteritems() %}
-    <a href="../../{{ path }}">{{ release }}</a></br>
-    {% endfor %}
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container">
+
+        <!-- Main component for a primary marketing message or call to action -->
+        <div class="jumbotron">
+            <h1>Cheddar Packages</h1>
+            <ul class="list-group">
+                {% for release, path in releases.iteritems() %}
+                    <li class="list-group-item"><a href="../../{{ path }}">{{ release }}</a></br></li>
+                {% endfor %}
+            </ul>
+
+        </div>
+
+    </div> <!-- /container -->
+{% endblock %}
