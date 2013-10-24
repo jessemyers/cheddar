@@ -105,7 +105,7 @@ Further work:
     It would be trivial to implement the exact match controller, but it's not clear what response
     `pip` expects in this case.
     
- -  The `setupptools` register command does not send Basic Auth credentials.
+ -  The `setuptools` register command does not send Basic Auth credentials.
  
     It would be much better to password-protect the register controller.
     
