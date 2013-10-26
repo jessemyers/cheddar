@@ -20,6 +20,7 @@ class RemoteIndex(Index):
     def __init__(self, app):
         self.index_url = app.config["INDEX_URL"]
         self.get_timeout = app.config["GET_TIMEOUT"]
+        self.logger = app.logger
 
     def register(self, name, version, data):
         """
@@ -45,21 +46,32 @@ class RemoteIndex(Index):
         """
         Request package data from remote index and parse HTML.
         """
+        self.logger.info("Getting remote releases listing for: {}".format(name))
+
         url = "{}/{}".format(self.index_url, name)
         response = get(url, timeout=self.get_timeout)
         if response.status_code != codes.ok:
+            self.logger.info("Remote releases listing not found: {}".format(response.status_code))
             abort(codes.not_found)
         soup = BeautifulSoup(response.text)
 
-        return {node.text: "remote" + get_absolute_path(self.index_url, node["href"]) for node in soup.findAll("a")}
+        releases = {node.text: "remote" + get_absolute_path(self.index_url, node["href"]) for node in soup.findAll("a")}
+
+        self.logger.debug("Obtained remote releases listing for: {}: {}".format(name, releases))
+        return releases
 
     def get_release(self, path, local):
         """
         Request distribution data for path on the index server.
         """
+        self.logger.info("Getting remote release: {}".format(path))
+
         response = get(make_absolute_url(self.index_url, path), timeout=self.get_timeout)
         if response.status_code != codes.ok:
+            self.logger.info("Release not found for: {}: {}".format(path, response.status_code))
             abort(codes.not_found)
+
+        # don't log binary release content (.tar.gz, .zip, etc.), even at debug
         return response.content, response.headers["Content-Type"]
 
     def remove_release(self, name, version):
@@ -81,6 +93,7 @@ class CachedRemoteIndex(RemoteIndex):
         self.redis = app.redis
         self.storage = app.remote_storage
         self.releases_ttl = app.config["RELEASES_TTL"]
+        self.logger = app.logger
 
     def get_available_releases(self, name):
         """
@@ -88,12 +101,14 @@ class CachedRemoteIndex(RemoteIndex):
 
         Currently, does not implement negative caching.
         """
+        self.logger.info("Getting available cached releases for: {}".format(name))
         key = "cheddar.remote.{}".format(name)
 
         # Check cache
         cached_releases = self.redis.get(key)
 
         if cached_releases is not None:
+            self.logger.debug("Found cached releases for: {}".format(name))
             return loads(cached_releases)
 
         try:
@@ -101,22 +116,28 @@ class CachedRemoteIndex(RemoteIndex):
         except HTTPException as error:
             if error.code == codes.not_found:
                 # Cache negative
+                self.logger.debug("Caching negative releases listing for: {}".format(name))
                 self.redis.setex(key, dumps({}), self.releases_ttl)
+            self.logger.warn("Unexpected error querying remote releases", exc_info=True)
             raise
         else:
+            self.logger.debug("Caching positive releases listing for: {}".format(name))
             self.redis.setex(key, dumps(computed_releases), self.releases_ttl)
-
+        self.logger.debug(computed_releases)
         return computed_releases
 
     def get_release(self, path, local):
         """
-        Adds pip "download cache" style caching to content data and content type.
+        Cache content data.
         """
         cached = self.storage.read(path)
         if cached is not None:
+            self.logger.debug("Found cached release for: {}".format(path))
             return cached
 
         content_data, content_type = super(CachedRemoteIndex, self).get_release(path, local)
+
+        self.logger.debug("Caching release for: {}".format(path))
         self.storage.write(path, content_data)
 
         return content_data, content_type

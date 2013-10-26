@@ -14,12 +14,13 @@ class DistributionStorage(object):
     A section
     """
 
-    def __init__(self, base_dir):
+    def __init__(self, base_dir, logger):
         """
         Initialize storage.
 
         :param base_dir: root directory for storage
         """
+        self.logger = logger
         self.base_dir = base_dir
         self.release_dir = join(base_dir, "releases")
         self.pre_release_dir = join(base_dir, "pre-releases")
@@ -35,11 +36,13 @@ class DistributionStorage(object):
         :returns: content data and content type, as a tuple
         """
         if not self.exists(name):
+            self.logger.debug("No file exists for: {}".format(name))
             return None
 
         with open(self.compute_path(name)) as file_:
             content_data = file_.read()
             content_type = from_buffer(content_data, mime=True)
+            self.logger.debug("Computed content type: {} for: {}".format(content_type, name))
             return content_data, content_type
 
     def write(self, name, data):
@@ -50,6 +53,7 @@ class DistributionStorage(object):
         path = self.compute_path(name)
         with open(path, "wb") as file_:
             file_.write(data)
+        self.logger.debug("Wrote file for: {}".format(name))
         return path
 
     def remove(self, name):
@@ -58,19 +62,23 @@ class DistributionStorage(object):
         """
         try:
             remove(self.compute_path(name))
+            self.logger.debug("Removed file for: {}".format(name))
             return True
         except OSError:
+            self.logger.debug("Unable to remove file for: {}".format(name))
             return False
 
-    def compute_path(self, path):
+    def compute_path(self, name):
         """
         Compute file system path.
 
         Path incorporates "pre-release" or "release" to easily
         differentiate released distributions for backup.
         """
-        base_dir = self.pre_release_dir if is_pre_release(path) else self.release_dir
-        return join(base_dir, basename(path))
+        base_dir = self.pre_release_dir if is_pre_release(name) else self.release_dir
+        path = join(base_dir, basename(name))
+        self.logger.debug("Computed path: {} for: {}".format(path, name))
+        return path
 
     def _make_base_dirs(self):
         """

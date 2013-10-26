@@ -95,8 +95,6 @@ Cheddar saves data in several places:
 
 Further work:
 
- -  A little diagnostic logging would go a long way.
- 
  -  Some unit tests using [mockredis][mockredis] would make it easier to manage changes.
 
  -  A `pip` installation using an extact version match will query a "/simple/{name}/{version}" URL

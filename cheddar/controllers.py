@@ -30,6 +30,7 @@ def create_routes(app):
         """
         Index page.
         """
+        app.logger.debug("Showing index page")
         return render_template("index.html")
 
     @app.route("/simple/")
@@ -40,6 +41,7 @@ def create_routes(app):
 
         Lists known packages.
         """
+        app.logger.debug("Showing package index")
         return render_template("simple.html",
                                packages=sorted(app.index.get_local_packages()))
 
@@ -51,6 +53,7 @@ def create_routes(app):
 
         Lists known releases and their locations.
         """
+        app.logger.debug("Showing package index for: {}".format(name))
         releases = app.index.get_available_releases(name)
 
         sorted_releases = OrderedDict()
@@ -67,6 +70,7 @@ def create_routes(app):
         """
         Delete distribution data. Requires auth.
         """
+        app.logger.debug("Removing package for: {} {}".format(name, version))
         app.index.remove_release(name, version)
         return ""
 
@@ -76,6 +80,7 @@ def create_routes(app):
         """
         Local distribution download access.
         """
+        app.logger.debug("Getting local distribution: {}".format(path))
         content_data, content_type = app.index.get_release(path, True)
         response = make_response(content_data)
         response.headers['Content-Type'] = content_type
@@ -89,6 +94,7 @@ def create_routes(app):
 
         Proxies and caches content.
         """
+        app.logger.debug("Getting remote distribution: {}".format(path))
         content_data, content_type = app.index.get_release(path, False)
         response = make_response(content_data)
         response.headers['Content-Type'] = content_type
@@ -112,6 +118,7 @@ def create_routes(app):
         """
         Upload distribution data. Requires auth.
         """
+        app.logger.debug("Uploading distribution")
         app.index.upload(request.files["content"])
         return ""
 
@@ -122,6 +129,7 @@ def create_routes(app):
         For no reason that I understand, setuptools does not send Basic Auth
         credentials for register, so this is *not* authenticated.
         """
+        app.logger.debug("Registering distribution")
         data = {key: values[0] for key, values in request.form.iterlists()}
         app.index.register(data["name"], data["version"], data)
         return ""
