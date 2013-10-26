@@ -3,11 +3,10 @@ Implements a local package index.
 """
 from flask import abort
 from requests import codes
-from pkginfo import SDist
 from werkzeug import secure_filename
 
 from cheddar.index import Index
-from cheddar.versions import guess_name_and_version
+from cheddar.versions import guess_name_and_version, read_metadata
 
 
 class LocalIndex(Index):
@@ -55,8 +54,8 @@ class LocalIndex(Index):
         try:
             # derive name and version from sdist
             self.logger.debug("Parsing source distribution for name and version")
-            distribution = SDist(path)
-            name, version = distribution.name, distribution.version
+            metadata = read_metadata(path)
+            name, version = metadata["name"], metadata["version"]
             expected_name, expected_version = guess_name_and_version(filename)
 
             # make file names match expectations

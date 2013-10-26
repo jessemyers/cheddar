@@ -3,6 +3,19 @@ Version utilities.
 """
 from pkg_resources import parse_version
 
+from pkginfo import SDist
+
+
+def read_metadata(path):
+    """
+    Extract package metadata from source distribution.
+
+    :param path: path to source distribution
+    :returns: dict of meta data
+    """
+    distribution = SDist(path)
+    return {key: getattr(distribution, key) for key in distribution.iterkeys()}
+
 
 def sort_key(basename):
     """
