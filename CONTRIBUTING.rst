@@ -118,7 +118,7 @@ Cheddar uses `gitflow`_ for its branch management.
  
 4. Update the change log appropriately.
 
-5. The pull request should work for Python 2.6, 2.7, Check 
+5. The pull request should work for Python 2.7 and PyPy Check
    https://travis-ci.org/jessemyers/cheddar/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
