@@ -6,9 +6,9 @@ from json import dumps, loads
 from requests import codes
 from werkzeug import secure_filename
 
-from cheddar.index import Index
-from cheddar.versions import (guess_name_and_version,
-                              read_metadata)
+from cheddar.index.index import Index
+from cheddar.model.versions import (guess_name_and_version,
+                                    read_metadata)
 
 
 class LocalIndex(Index):

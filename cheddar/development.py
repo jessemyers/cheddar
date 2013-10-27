@@ -1,8 +1,8 @@
 """
 Run a development server.
 """
-
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
 from cheddar.app import create_app
 
 

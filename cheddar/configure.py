@@ -8,9 +8,9 @@ from flask import request
 from redis import Redis
 
 from cheddar import defaults
-from cheddar.combined import CombinedIndex
 from cheddar.controllers import create_routes
-from cheddar.storage import DistributionStorage
+from cheddar.index.combined import CombinedIndex
+from cheddar.index.storage import DistributionStorage
 
 
 def configure_app(app, debug=False, testing=False):

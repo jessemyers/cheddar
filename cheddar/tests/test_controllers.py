@@ -232,7 +232,7 @@ class TestControllers(object):
 
     @contextmanager
     def _mocked_get(self, url, status_code,):
-        with patch("cheddar.remote.get") as mock_get:
+        with patch("cheddar.index.remote.get") as mock_get:
             mock_get.return_value.status_code = status_code
 
             yield mock_get

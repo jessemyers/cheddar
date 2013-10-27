@@ -6,7 +6,7 @@ from os.path import basename, exists, isdir, join
 
 from magic import from_buffer
 
-from cheddar.versions import is_pre_release
+from cheddar.model.versions import is_pre_release
 
 
 class DistributionStorage(object):

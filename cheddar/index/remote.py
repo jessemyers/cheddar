@@ -10,8 +10,8 @@ from flask import abort
 from requests import codes, get
 from werkzeug.exceptions import HTTPException
 
-from cheddar.index import Index
-from cheddar.versions import guess_name_and_version
+from cheddar.index.index import Index
+from cheddar.model.versions import guess_name_and_version
 
 
 class RemoteIndex(Index):

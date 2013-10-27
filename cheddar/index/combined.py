@@ -1,12 +1,9 @@
 """
 Implements a combined local and remote package index.
 """
-from requests import codes
-from werkzeug.exceptions import HTTPException
-
-from cheddar.index import Index
-from cheddar.local import LocalIndex
-from cheddar.remote import CachedRemoteIndex
+from cheddar.index.index import Index
+from cheddar.index.local import LocalIndex
+from cheddar.index.remote import CachedRemoteIndex
 
 
 class CombinedIndex(Index):

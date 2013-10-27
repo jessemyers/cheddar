@@ -5,14 +5,14 @@ from os.path import dirname, join
 
 from nose.tools import eq_
 
-from cheddar.versions import (guess_name_and_version,
-                              is_pre_release,
-                              read_metadata,
-                              sort_key)
+from cheddar.model.versions import (guess_name_and_version,
+                                    is_pre_release,
+                                    read_metadata,
+                                    sort_key)
 
 
 def test_parse_name_and_version():
-    path = join(dirname(__file__), "data/example-1.0.tar.gz")
+    path = join(dirname(__file__), "../data/example-1.0.tar.gz")
     metadata = read_metadata(path)
 
     eq_(metadata,

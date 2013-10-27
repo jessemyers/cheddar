@@ -7,7 +7,7 @@ from functools import wraps
 from flask import abort, jsonify, make_response, render_template, request
 
 from cheddar.auth import check_authentication
-from cheddar.versions import sort_key
+from cheddar.model.versions import sort_key
 
 
 def create_routes(app):
