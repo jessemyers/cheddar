@@ -12,7 +12,7 @@ cheddar
         :target: https://crate.io/packages/cheddar?version=latest
 
 
-PyPI clone with Flask and Redis
+PyPI clone with Flask and Redis. It's the single most popular cheese in the world!
 
 * Free software: Apache License V2
 * Documentation: http://cheddar.rtfd.org.
