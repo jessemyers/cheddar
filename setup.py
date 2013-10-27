@@ -14,7 +14,7 @@ setup(name='cheddar',
       url='https://github.com/jessemyers/cheddar',
       packages=find_packages(exclude=['*.tests']),
       setup_requires=[
-          'nose>=1.0',
+          'nose>=1.3.0',
       ],
       install_requires=[
           'Flask>=0.10',
