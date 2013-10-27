@@ -17,10 +17,6 @@ from requests import codes
 
 from cheddar.app import create_app
 
-# Tests that would still be nice to write:
-# - Register
-# - Upload
-
 
 class TestControllers(object):
 
@@ -154,6 +150,10 @@ class TestControllers(object):
         eq_(result.headers["Content-Type"], "application/x-gzip")
         eq_(result.headers["Content-Length"], "843")
 
+    def test_delete_requires_auth(self):
+        result = self.client.delete("/simple/example/1.0")
+        eq_(result.status_code, codes.unauthorized)
+
     def test_delete_package(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
@@ -173,6 +173,34 @@ class TestControllers(object):
         ok_(not self.app.redis.exists("cheddar.local.example"))
         ok_(not self.app.redis.exists("cheddar.local.example-1.0"))
         ok_(not exists(distribution))
+
+    def test_register_missing_required_parameters(self):
+        result = self.client.post("/pypi", data={})
+        eq_(result.status_code, codes.bad_request)
+
+    def test_register_ok(self):
+        result = self.client.post("/pypi", data={"name": "example",
+                                                 "version": "1.0"})
+        eq_(result.status_code, codes.ok)
+
+    def test_upload_requires_auth(self):
+        with open(join(dirname(__file__), "data/example-1.0.tar.gz")) as file_:
+            result = self.client.post("/pypi", data={"file": (file_, "example-1.0.tar.gz")})
+        eq_(result.status_code, codes.unauthorized)
+
+    def test_upload_bad_filename(self):
+        with open(join(dirname(__file__), "data/example-1.0.tar.gz")) as file_:
+            result = self.client.post("/pypi",
+                                      data={"file": (file_, "example-1.1.tar.gz")},
+                                      headers=self.use_auth)
+        eq_(result.status_code, codes.bad_request)
+
+    def test_upload_ok(self):
+        with open(join(dirname(__file__), "data/example-1.0.tar.gz")) as file_:
+            result = self.client.post("/pypi",
+                                      data={"file": (file_, "example-1.0.tar.gz")},
+                                      headers=self.use_auth)
+        eq_(result.status_code, codes.ok)
 
     @contextmanager
     def _mocked_get(self, url, status_code):

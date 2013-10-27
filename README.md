@@ -4,8 +4,8 @@ PyPI clone with Flask and Redis
 
 ## Features
 
-Cheddar aims to simplify Python development within organizations that work with both private
-and public Python distributions.
+Cheddar aims to simplify Python development within organizations that simultaneously work
+with public and private Python distributions.
 
 Cheddar includes:
 
@@ -13,10 +13,10 @@ Cheddar includes:
     `register` and `upload` commands.
     
  -  A *remote* package index that proxies to a public repository (such as `pypi.python.org`)
-    and *caches* packages and release listings locally to reduce latency and minimize the effect
-    of downtime byy the public repository.
+    and *caches* packages and package release listings to reduce latency and minimize the effect
+    of downtime by the public repository.
     
- -  A *combined* package index that combines the best of the local and remote implementations.
+ -  A *combined* package index that unifies the best of the local and remote implementations.
  
 In addition, Cheddar supports a few features that simplify management within an organization:
 
@@ -31,12 +31,18 @@ In addition, Cheddar supports a few features that simplify management within an 
 
 ## Configuration
 
-Cheddar can run in any WSGI container or through the built-in development server. Configuation
-comes from the `defaults.py` module and any data found by reading a file pointed to by the
-`CHEDDAR_SETTINGS` environment variable.
+Cheddar can run in any WSGI container or through Flask's built-in development server (which is
+single-threaded and only recommended for development).
 
-You may wish to modify the `INDEX_URL` and `REDIS_HOSTNAME` variables, which control where
-Cheddar finds remote its remote index and Redis, respectively.
+Configuation is loaded from the `defaults.py` module along with the contents of the file pointed
+to by the `CHEDDAR_SETTINGS` environment variable, if any.
+
+You may wish to modify several of the configuration parameters from their default values, including:
+
+ -  `INDEX_URL` which specifies the URL of the *remote* package index
+ -  `REDIS_HOSTNAME` which control the location of the Redis server
+ -  `LOCAL_CACHE_DIR` which controls the storage location of locally uploaded files
+ -  `REMOTE_CACHE_DIR` which controls the storage location of cached remote files
 
 ## The Local Index
 
@@ -63,10 +69,13 @@ To use the local index:
  
         redis-cli set cheddar.user.myusername mypasswod
         
- 3. Publish and upload your distribution:
+ 3. Upload your distribution:
  
         cd /path/to/directory/containing/setup.py
-        python setup.py register -r cheddar sdist upload -r cheddar
+        python setup.py sdist upload -r cheddar
+
+    You may also use the `register -r cheddar` to validate your `setup.py` without
+    uploading the source distribution.
 
 ## The Remote Index
 
@@ -90,21 +99,3 @@ Cheddar saves data in several places:
  -  Remote release listings may be cached in Redis.
  -  User data (for upload authentication) is stored in Redis.
  -  Local package release listings are stored Redis.
- 
-## TODO
-
-Further work:
-
- -  Some unit tests using [mockredis][mockredis] would make it easier to manage changes.
-
- -  A `pip` installation using an extact version match will query a "/simple/{name}/{version}" URL
-    before falling back to a general "/simple/{name}" search.
-    
-    It would be trivial to implement the exact match controller, but it's not clear what response
-    `pip` expects in this case.
-    
- -  The `setuptools` register command does not send Basic Auth credentials.
- 
-    It would be much better to password-protect the register controller.
- 
- [mockredis]: https://github.com/locationlabs/mockredis

@@ -6,7 +6,8 @@ from requests import codes
 from werkzeug import secure_filename
 
 from cheddar.index import Index
-from cheddar.versions import guess_name_and_version, read_metadata
+from cheddar.versions import (guess_name_and_version,
+                              read_metadata)
 
 
 class LocalIndex(Index):
@@ -18,22 +19,23 @@ class LocalIndex(Index):
         self.storage = app.local_storage
         self.logger = app.logger
 
-    def register(self, **metadata):
+    def validate_metadata(self, **metadata):
         """
-        Register a distribution:
-
-        - Record name in list of all local packages
-        - Record name, version in list of release for package
-        - Record metadata for release
+        Validate that name and version are provided in a distribution's metadata.
         """
-        self.logger.info("Registering local distribution: {}".format(metadata))
-        self._validate(**metadata)
-        self._add(**metadata)
+        self.logger.info("Validating metadata: {}".format(metadata))
+        for required in ["name", "version"]:
+            if required not in metadata:
+                return False
+        return True
 
     def upload(self, upload_file):
         """
         Upload a distribution:
 
+        - Record name in list of all local packages
+        - Record name, version in list of release for package
+        - Record metadata for release
         - Validate name and version
         - Write to local storage
         - Record location in metadata
@@ -46,39 +48,32 @@ class LocalIndex(Index):
             self.logger.warn("Aborting upload of: {}; already exists".format(filename))
             abort(codes.conflict)
 
-        # write to storage first because SDist needs a file path
+        # write to storage first because read_metadata needs a file path
         path = self.storage.write(filename, upload_file.read())
 
         try:
-            # derive name and version from sdist
-            self.logger.debug("Parsing source distribution for name and version")
+            # extract metadata
+            self.logger.debug("Parsing source distribution for metadata")
             metadata = read_metadata(path)
-            name, version = metadata["name"], metadata["version"]
-            expected_name, expected_version = guess_name_and_version(filename)
 
-            # make file names match expectations
-            if name != expected_name or version != expected_version:
-                self.logger.warn("Aborting upload of: {}; conflicting metadata".format(filename))
+            # make sure it validates and nothing fishy is going on
+            if not self.validate_metadata(**metadata) or "_filename" in metadata:
+                abort(400)
+
+            # make sure it is consistent with filename
+            expected_name, expected_version = guess_name_and_version(filename)
+            if metadata["name"] != expected_name or metadata["version"] != expected_version:
+                self.logger.warn("Aborting upload of: {}; conflicting filename and metadata".format(filename))
                 abort(codes.bad_request)
 
-            key = self._release_key(name, version)
-
-            # ensure that register was called
-            if not self.redis.exists(key):
-                self.logger.warn("Aborting upload of: {}; not registered".format(filename))
-                abort(codes.not_found)
-
-            # ensure that upload wasn't already performed
-            if self.redis.hget(key, "_filename"):
-                self.logger.warn("Aborting upload of: {}; already uploaded".format(filename))
-                abort(codes.conflict)
+            # include local path in metadata
+            metadata["_filename"] = filename
         except:
             self.logger.debug("Removing uploaded file: {} on error".format(filename))
             self.storage.remove(filename)
             raise
         else:
-            # save filename in dictionary
-            self.redis.hset(key, "_filename", filename)
+            self._add(**metadata)
 
     def get_local_packages(self):
         self.logger.info("Getting local packages")
@@ -145,11 +140,6 @@ class LocalIndex(Index):
 
     def _release_key(self, name, version):
         return "cheddar.local.{}-{}".format(name, version)
-
-    def _validate(self, **metadata):
-        for required in ["name", "version"]:
-            if required not in metadata:
-                abort(400)
 
     def _add(self, **metadata):
         name, version = metadata["name"], metadata["version"]

@@ -106,12 +106,10 @@ def create_routes(app):
         """
         PyPI upload endpoint, handles setuptools register and upload commands.
         """
-        if "content" in request.files:
+        if request.files:
             return upload()
-        elif "name" in request.form and "version" in request.form:
-            return register()
         else:
-            abort(400)
+            return register()
 
     @authenticated
     def upload():
@@ -119,7 +117,10 @@ def create_routes(app):
         Upload distribution data. Requires auth.
         """
         app.logger.debug("Uploading distribution")
-        app.index.upload(request.files["content"])
+
+        _, upload_file = next(request.files.iterlists())
+        app.index.upload(upload_file[0])
+
         return ""
 
     def register():
@@ -127,11 +128,15 @@ def create_routes(app):
         Register a distribution.
 
         For no reason that I understand, setuptools does not send Basic Auth
-        credentials for register, so this is *not* authenticated.
+        credentials for register, so this is *not* authenticated and only
+        validates the metadata.
         """
         app.logger.debug("Registering distribution")
+
         metadata = {key: values[0] for key, values in request.form.iterlists()}
-        app.index.register(**metadata)
+        if not app.index.validate_metadata(**metadata):
+            abort(400)
+
         return ""
 
     def _render(template, **data):

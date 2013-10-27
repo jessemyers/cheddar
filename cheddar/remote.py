@@ -23,7 +23,7 @@ class RemoteIndex(Index):
         self.get_timeout = app.config["GET_TIMEOUT"]
         self.logger = app.logger
 
-    def register(self, **metadata):
+    def validate_metadata(self, **metadata):
         """
         Unsupported.
         """

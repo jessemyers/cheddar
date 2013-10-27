@@ -8,7 +8,7 @@ __build__ = ''
 
 setup(name='cheddar',
       version=__version__ + __build__,
-      description='PyPI clone',
+      description='PyPI clone with Flask and Redis',
       author='Jesse Myers',
       author_email='jesse@locationlabs.com',
       url='https://github.com/jessemyers/cheddar',
