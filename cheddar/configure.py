@@ -26,8 +26,6 @@ def configure_app(app, debug=False, testing=False):
     _configure_logging(app)
     _configure_jinja(app)
 
-    dictConfig(app.config['LOGGING'])
-
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
     app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"], app.logger)
@@ -61,14 +59,10 @@ def _configure_from_environment(app):
 
 
 def _configure_logging(app):
-    if not app.debug and not app.testing:
-        file_handler = TimedRotatingFileHandler(app.config["LOG_FILE"], when='d')
-        file_handler.setLevel(app.config["LOG_LEVEL"])
-        file_handler.setFormatter(logging.Formatter(
-            app.config["LOG_FORMAT"]
-        ))
+    if app.debug or app.testing:
+        app.config['LOGGING']['loggers']['']['handlers'] = ['console']
 
-        app.logger.addHandler(file_handler)
+    dictConfig(app.config['LOGGING'])
 
 
 def _configure_jinja(app):

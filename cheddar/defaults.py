@@ -24,6 +24,8 @@ REMOTE_CACHE_DIR = "/var/tmp/cheddar-{}/remote".format(getuser())
 # Where should we cache local package data?
 LOCAL_CACHE_DIR = "/var/tmp/cheddar-{}/local".format(getuser())
 
+HANDLERS = ['console', 'app',]
+
 # Logging configuration
 LOGGING = {
     'version': 1,
@@ -56,7 +58,7 @@ LOGGING = {
 
     'loggers': {
         '': {
-            'handlers': ['console', 'app',],
+            'handlers': HANDLERS,
             'level': 'DEBUG',
             'propagate': False,
         },
