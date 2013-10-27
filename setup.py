@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
@@ -6,9 +7,13 @@ __version__ = '1.0'
 
 __build__ = ''
 
+readme = open('README.rst').read()
+history = open('HISTORY.rst').read().replace('.. :changelog:', '')
+
 setup(name='cheddar',
       version=__version__ + __build__,
       description='PyPI clone with Flask and Redis',
+      long_description=readme + '\n\n' + history,
       author='Jesse Myers',
       author_email='jesse@locationlabs.com',
       url='https://github.com/jessemyers/cheddar',
