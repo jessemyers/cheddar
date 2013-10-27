@@ -63,28 +63,39 @@ class TestControllers(object):
         eq_(result.status_code, codes.ok)
         eq_(loads(result.data), dict())
 
-    def test_simple_no_packages_template_render(self):
+    def test_get_projects_no_projects_template_render(self):
         result = self.client.get("/simple")
         eq_(result.status_code, codes.ok)
 
-    def test_simple_no_packages_json(self):
+    def test_get_projects_no_project_json(self):
         result = self.client.get("/simple", headers=self.use_json)
         eq_(result.status_code, codes.ok)
-        eq_(loads(result.data), dict(packages=[]))
+        eq_(loads(result.data), dict(projects=[]))
 
-    def test_simple_two_packages_json(self):
-        self.app.index.local._add(**{"name": "foo", "version": "1.0"})
-        self.app.index.local._add(**{"name": "bar", "version": "1.1"})
+    def test_get_projects_two_projects_json(self):
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.0"})
+        self.app.index.local._add_metadata({"name": "bar", "version": "1.1"})
 
         result = self.client.get("/simple", headers=self.use_json)
         eq_(result.status_code, codes.ok)
-        eq_(loads(result.data), dict(packages=["bar", "foo"]))
+        eq_(loads(result.data), dict(projects=["bar", "foo"]))
 
-    def test_list_releases_template_render(self):
-        self.app.index.local._add(**{"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
-        self.app.index.local._add(**{"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
-        self.app.index.local._add(**{"name": "foo", "version": "1.0.dev1", "_filename": "foo-1.0.dev1.tar.gz"})
+    def test_get_project_local_template_render(self):
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.0.dev1", "_filename": "foo-1.0.dev1.tar.gz"})
 
+        result = self.client.get("/simple/foo")
+
+        eq_(result.status_code, codes.ok)
+        iter_ = self.app.index.remote._iter_version_links(result.data)
+        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
+        with assert_raises(StopIteration):
+            iter_.next()
+
+    def test_get_project_remote_template_render(self):
         with self._mocked_get("http://pypi.python.org/simple/foo", codes.ok) as mock_get:
             mock_get.return_value.text = dedent("""\
                 <html>
@@ -95,29 +106,26 @@ class TestControllers(object):
             result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        iter_ = self.app.index.remote._iter_release_links(result.data)
-        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
+        iter_ = self.app.index.remote._iter_version_links(result.data)
         eq_(iter_.next(), ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz"))
-        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
-        eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
         with assert_raises(StopIteration):
             iter_.next()
 
-    def test_list_releases_json(self):
-        self.app.index.local._add(**{"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
-        self.app.index.local._add(**{"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+    def test_get_project_json(self):
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.index.local._add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
 
-        with self._mocked_get("http://pypi.python.org/simple/foo", codes.not_found):
-            result = self.client.get("/simple/foo", headers=self.use_json)
+        result = self.client.get("/simple/foo", headers=self.use_json)
 
         eq_(result.status_code, codes.ok)
-        eq_(loads(result.data), dict(releases={"foo-1.0.tar.gz": "local/foo-1.0.tar.gz",
-                                               "foo-1.1.tar.gz": "local/foo-1.1.tar.gz"}))
+        eq_(loads(result.data), dict(project="foo",
+                                     versions={"foo-1.0.tar.gz": "/local/foo-1.0.tar.gz",
+                                               "foo-1.1.tar.gz": "/local/foo-1.1.tar.gz"}))
 
     def test_get_local_distribution(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
-        self.app.index.local._add(**{"name": "example", "version": "1.0", "_filename": distribution})
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
 
         result = self.client.get("/local/example-1.0.tar.gz")
 
@@ -139,6 +147,25 @@ class TestControllers(object):
         eq_(result.headers["Content-Type"], "application/x-gzip")
         eq_(result.headers["Content-Length"], "843")
 
+    def test_get_version_unknown_project(self):
+        result = self.client.get("/simple/example/1.0")
+        eq_(result.status_code, codes.not_found)
+
+    def test_get_version_unknown_version(self):
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        result = self.client.get("/simple/example/1.1")
+        eq_(result.status_code, codes.not_found)
+
+    def test_get_version(self):
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        result = self.client.get("/simple/example/1.0", headers=self.use_json)
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict(project="example",
+                                     version="1.0",
+                                     metadata=dict(name="example",
+                                                   version="1.0",
+                                                   _filename="example-1.0.tar.gz")))
+
     def test_get_remote_distribution_cached(self):
         template = join(dirname(__file__), "data/example-1.0.tar.gz")
         distribution = join(self.remote_cache_dir, "releases", "example-1.0.tar.gz")
@@ -150,20 +177,21 @@ class TestControllers(object):
         eq_(result.headers["Content-Type"], "application/x-gzip")
         eq_(result.headers["Content-Length"], "843")
 
-    def test_delete_requires_auth(self):
+    def test_delete_version_requires_auth(self):
         result = self.client.delete("/simple/example/1.0")
         eq_(result.status_code, codes.unauthorized)
 
-    def test_delete_package(self):
+    def test_delete_version(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
-        self.app.index.local._add(**{"name": "example", "version": "1.0", "_filename": distribution})
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
 
         eq_(self.app.redis.smembers("cheddar.local"), set(["example"]))
         eq_(self.app.redis.smembers("cheddar.local.example"), set(["1.0"]))
-        eq_(self.app.redis.hlen("cheddar.local.example-1.0"), 3)
-        eq_(self.app.redis.hget("cheddar.local.example-1.0", "name"), "example")
-        eq_(self.app.redis.hget("cheddar.local.example-1.0", "version"), "1.0")
+        eq_(loads(self.app.redis.get("cheddar.local.example-1.0")),
+            {"name": "example",
+             "version": "1.0",
+             "_filename": distribution})
         ok_(exists(distribution))
 
         result = self.client.delete("/simple/example/1.0", headers=self.use_auth)
@@ -203,7 +231,7 @@ class TestControllers(object):
         eq_(result.status_code, codes.ok)
 
     @contextmanager
-    def _mocked_get(self, url, status_code):
+    def _mocked_get(self, url, status_code,):
         with patch("cheddar.remote.get") as mock_get:
             mock_get.return_value.status_code = status_code
 

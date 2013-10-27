@@ -5,10 +5,10 @@
 
         <!-- Main component for a primary marketing message or call to action -->
         <div class="jumbotron">
-            <h1>Cheddar Packages</h1>
+            <h1>Hosted Projects</h1>
             <ul class="list-group">
-                {% for package in packages %}
-                    <li class="list-group-item"><a href="/simple/{{ package }}">{{ package }}</a></li>
+                {% for project in projects %}
+                    <li class="list-group-item"><a href="/simple/{{ project }}">{{ project }}</a></li>
                 {% endfor %}
             </ul>
 

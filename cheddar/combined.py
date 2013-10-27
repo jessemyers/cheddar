@@ -19,58 +19,61 @@ class CombinedIndex(Index):
         self.remote = CachedRemoteIndex(app)
         self.logger = app.logger
 
-    def validate_metadata(self, **metadata):
+    def get_projects(self):
+        """
+        Get projects from the local index.
+        """
+        return self.local.get_projects()
+
+    def get_versions(self, name):
+        """
+        Get versions from both indexes, favoring the local index.
+        """
+        # A project hosted locally will mask anything hosted remotedly.
+        # It *is* possible to query both indexes and merge the results, but
+        # this comes as the cost of the added latency of the remote index
+        # on every query with a cache miss.
+        #
+        # At the moment, this overhead doesn't seem worthwhile.
+        local_versions = self.local.get_versions(name)
+        if local_versions:
+            self.logger.info("Obtained versions listing for: {} using local index".format(name))
+            return local_versions
+
+        remote_versions = self.remote.get_versions(name)
+        self.logger.info("Obtained versions listing for: {} using remote index".format(name))
+        return remote_versions
+
+    def get_metadata(self, name, version):
+        """
+        Get metadata from local index.
+        """
+        return self.local.get_metadata(name, version)
+
+    def get_distribution(self, path, **kwargs):
+        """
+        Get distribution using hint from controller.
+        """
+        local = kwargs.get("local", True)
+        if local:
+            return self.local.get_distribution(path, **kwargs)
+        else:
+            return self.remote.get_distribution(path, **kwargs)
+
+    def remove_version(self, name, version):
+        """
+        Remove from local index.
+        """
+        self.local.remove_version(name, version)
+
+    def validate_metadata(self, metadata):
         """
         Validate against the local index.
         """
-        return self.local.validate_metadata(**metadata)
+        return self.local.validate_metadata(metadata)
 
-    def upload(self, upload_file):
+    def upload_distribution(self, upload_file):
         """
         Upload to the local index.
         """
-        return self.local.upload(upload_file)
-
-    def get_local_packages(self):
-        """
-        Show packages in the local index.
-        """
-        return self.local.get_local_packages()
-
-    def get_available_releases(self, name):
-        """
-        Show available packages in both indexes, favoring
-        the local if there are conflicts.
-        """
-        # remote access for packages that are local can be slow,
-        # especially if there's a cache miss; we could check the
-        # local index first and selectively not check the remote index,
-        # at the expense of not seeing remote packages that were uploaded
-        # locally
-        self.logger.info("Computing combined releases listing for: {}".format(name))
-        try:
-            releases = self.remote.get_available_releases(name)
-        except HTTPException as error:
-            if error.code != codes.not_found:
-                self.logger.warn("Unexpected response for remove releases listing for: {}: {}".format(name, error.code))
-                raise
-            releases = {}
-        releases.update(self.local.get_available_releases(name))
-
-        self.logger.debug("Obtained combined releases listing for: {}: {}".format(name, releases))
-        return releases
-
-    def get_release(self, path, local):
-        """
-        Get release data using hint from controller.
-        """
-        if local:
-            return self.local.get_release(path, local)
-        else:
-            return self.remote.get_release(path, local)
-
-    def remove_release(self, name, version):
-        """
-        Remove local release.
-        """
-        self.local.remove_release(name, version)
+        return self.local.upload_distribution(upload_file)

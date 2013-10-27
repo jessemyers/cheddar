@@ -13,7 +13,7 @@ Cheddar includes:
     `register` and `upload` commands.
     
  -  A *remote* package index that proxies to a public repository (such as `pypi.python.org`)
-    and *caches* packages and package release listings to reduce latency and minimize the effect
+    and *caches* packages and package version listings to reduce latency and minimize the effect
     of downtime by the public repository.
     
  -  A *combined* package index that unifies the best of the local and remote implementations.
@@ -96,6 +96,6 @@ Cheddar saves data in several places:
 
  -  Local packages are stored in the `LOCAL_CACHE_DIR`
  -  Remote packages may be cached in the `REMOTE_CACHE_DIR`
- -  Remote release listings may be cached in Redis.
+ -  Remote version listings may be cached in Redis.
  -  User data (for upload authentication) is stored in Redis.
- -  Local package release listings are stored Redis.
+ -  Local package version listings are stored Redis.

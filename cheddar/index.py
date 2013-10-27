@@ -11,52 +11,76 @@ class Index(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def validate_metadata(self, **metadata):
+    def get_projects(self):
+        """
+        Get the list of hosted projects.
+
+        :returns: an iterable of project names
+        """
+        pass
+
+    @abstractmethod
+    def get_versions(self, name):
+        """
+        Get the list of versions for a project.
+
+        :param name: the project name
+        :returns: a dictionary mapping versions to paths
+        """
+        pass
+
+    @abstractmethod
+    def get_metadata(self, name, version):
+        """
+        Get metadata for a project version.
+
+        :param name: the project name
+        :param version: the project version
+        :returns: a dictionary of metadata
+        """
+        pass
+
+    @abstractmethod
+    def get_distribution(self, location, **kwargs):
+        """
+        Get distribution for a project version.
+
+        :param location: location of the distribution content
+        :returns: a pair of content data and content type for a distribution
+        """
+        pass
+
+    @abstractmethod
+    def remove_version(self, name, version):
+        """
+        Remove all data for a project version.
+
+        :param name: the project name
+        :param version: the project version
+        """
+        pass
+
+    @abstractmethod
+    def validate_metadata(metadata):
         """
         Validate a distribution's metadata.
 
-        :param metadata: the distribution's metadata
+        At a minimum, this function must verify that the project name and version
+        are present in the dictionary. Other entries may be required as well.
+
+        :param metadata: a dictionary of key-value metadata
         :returns: whether the metadata was valid
         """
         pass
 
     @abstractmethod
-    def upload(self, upload_file):
+    def upload_distribution(self, upload_file):
         """
-        Upload a distribution.
+        Upload a distribution for a project version.
 
-        :param upload_file: the uploaded file
-        """
-        pass
+        The project name and version are determined from the metadata
+        in the uploade_file contents.
 
-    @abstractmethod
-    def get_local_packages(self):
-        """
-        :returns: a list of locally available packages
-        """
-        pass
-
-    @abstractmethod
-    def get_available_releases(self, name):
-        """
-        :param name: the distribution name
-        :returns: a dictionary mapping releases to paths
-        """
-        pass
-
-    @abstractmethod
-    def get_release(self, path, local):
-        """
-        :param path: location of the release content
-        :returns: a pair of content data and content type for a release
-        """
-        pass
-
-    @abstractmethod
-    def remove_release(self, name, version):
-        """
-        :param name: the distribution name
-        :param version: the distribution version
-        :returns: a pair of content data and content type for a release
+        :param upload_file: an instance of `werkezeug.datastructures.FileStorage`
         """
         pass

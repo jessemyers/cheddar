@@ -35,67 +35,87 @@ def create_routes(app):
 
     @app.route("/simple/")
     @app.route("/simple")
-    def simple():
+    def list_project():
         """
-        Simple package index.
+        List all hosted projects.
+        """
+        app.logger.debug("Showing all projects")
 
-        Lists known packages.
-        """
-        app.logger.debug("Showing package index")
-        return _render("simple.html",
-                       packages=sorted(app.index.get_local_packages()))
+        projects = sorted(app.index.get_projects())
+
+        return _render("simple.html", projects=projects)
 
     @app.route("/simple/<name>/")
     @app.route("/simple/<name>")
-    def list_releases(name):
+    def get_project(name):
         """
-        Simple package index for a single package.
-
-        Lists known releases and their locations.
+        List versions for a hosted project.
         """
-        app.logger.debug("Showing package index for: {}".format(name))
-        releases = app.index.get_available_releases(name)
+        app.logger.info("Showing package index for: {}".format(name))
 
-        sorted_releases = OrderedDict()
-        for name in sorted(releases.keys(), key=sort_key):
-            sorted_releases[name] = releases[name]
+        versions = app.index.get_versions(name)
 
-        return _render("package.html",
-                       releases=sorted_releases)
+        if not versions:
+            abort(404)
 
-    @app.route("/simple/<name>/<version>/", methods=["DELETE"])
-    @app.route("/simple/<name>/<version>", methods=["DELETE"])
+        sorted_versions = OrderedDict()
+        for version in sorted(versions.keys(), key=sort_key):
+            sorted_versions[version] = versions[version]
+
+        return _render("project.html", project=name, versions=sorted_versions)
+
+    @app.route("/simple/<name>/<version>/", methods=["GET", "DELETE"])
+    @app.route("/simple/<name>/<version>", methods=["GET", "DELETE"])
+    def handle_version(name, version):
+        if request.method == "DELETE":
+            return remove_version(name, version)
+        else:
+            return get_version(name, version)
+
+    def get_version(name, version):
+        """
+        Get metadata for version.
+        """
+        app.logger.debug("Getting: {} {}".format(name, version))
+
+        metadata = app.index.get_metadata(name, version)
+
+        if metadata is None:
+            abort(404)
+
+        return _render("version.html", project=name, version=version, metadata=metadata)
+
     @authenticated
-    def remove_package(name, version):
+    def remove_version(name, version):
         """
-        Delete distribution data. Requires auth.
+        Delete all version data. Requires auth.
         """
-        app.logger.debug("Removing package for: {} {}".format(name, version))
-        app.index.remove_release(name, version)
+        app.logger.debug("Removing: {} {}".format(name, version))
+        app.index.remove_version(name, version)
         return ""
 
-    @app.route("/local/<path:path>/")
-    @app.route("/local/<path:path>")
-    def get_local_distribution(path):
+    @app.route("/local/<path:location>/")
+    @app.route("/local/<path:location>")
+    def get_local_distribution(location):
         """
         Local distribution download access.
         """
-        app.logger.debug("Getting local distribution: {}".format(path))
-        content_data, content_type = app.index.get_release(path, True)
+        app.logger.debug("Getting local distribution: {}".format(location))
+        content_data, content_type = app.index.get_distribution(location, local=True)
         response = make_response(content_data)
         response.headers['Content-Type'] = content_type
         return response
 
-    @app.route("/remote/<path:path>/")
-    @app.route("/remote/<path:path>")
-    def get_remote_distribution(path):
+    @app.route("/remote/<path:location>/")
+    @app.route("/remote/<path:location>")
+    def get_remote_distribution(location):
         """
         Remote distribution download access.
 
         Proxies and caches content.
         """
-        app.logger.debug("Getting remote distribution: {}".format(path))
-        content_data, content_type = app.index.get_release(path, False)
+        app.logger.debug("Getting remote distribution: {}".format(location))
+        content_data, content_type = app.index.get_distribution(location, local=False)
         response = make_response(content_data)
         response.headers['Content-Type'] = content_type
         return response
@@ -104,7 +124,7 @@ def create_routes(app):
     @app.route("/pypi", methods=["POST"])
     def pypi():
         """
-        PyPI upload endpoint, handles setuptools register and upload commands.
+        Register and upload endpoint for pip.
         """
         if request.files:
             return upload()
@@ -114,12 +134,12 @@ def create_routes(app):
     @authenticated
     def upload():
         """
-        Upload distribution data. Requires auth.
+        Upload a distribution. Requires auth.
         """
         app.logger.debug("Uploading distribution")
 
         _, upload_file = next(request.files.iterlists())
-        app.index.upload(upload_file[0])
+        app.index.upload_distribution(upload_file[0])
 
         return ""
 
@@ -127,14 +147,18 @@ def create_routes(app):
         """
         Register a distribution.
 
-        For no reason that I understand, setuptools does not send Basic Auth
-        credentials for register, so this is *not* authenticated and only
-        validates the metadata.
+        The correct behavior for the `setuptools` register command is somewhat
+        vague. The PEP 301 docs (for `distutils`) mostly cover user management,
+        whereas `setuptools` CLI help says "register the distribution with the
+        Python package index."
+
+        Given this ambiguity and the fact that register does *NOT* send auth
+        credentials, this operation simply validates the provided metadata.
         """
         app.logger.debug("Registering distribution")
 
         metadata = {key: values[0] for key, values in request.form.iterlists()}
-        if not app.index.validate_metadata(**metadata):
+        if not app.index.validate_metadata(metadata):
             abort(400)
 
         return ""
