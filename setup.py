@@ -3,7 +3,7 @@
 
 from setuptools import setup, find_packages
 
-__version__ = '1.0'
+from cheddar import __version__
 
 __build__ = ''
 
