@@ -2,7 +2,7 @@
 Configure the Flask application.
 """
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from logging.config import dictConfig
 
 from flask import request
 from redis import Redis
@@ -17,6 +17,7 @@ def configure_app(app, debug=False, testing=False):
     """
     Load configuration and initialize collaborators.
     """
+
     app.debug = debug
     app.testing = testing
 
@@ -24,6 +25,8 @@ def configure_app(app, debug=False, testing=False):
     _configure_from_environment(app)
     _configure_logging(app)
     _configure_jinja(app)
+
+    dictConfig(app.config['LOGGING'])
 
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
