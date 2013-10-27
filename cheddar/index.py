@@ -11,13 +11,11 @@ class Index(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def register(self, name, version, data):
+    def register(self, **metadata):
         """
         Register a distribution.
 
-        :param name: the distribution name
-        :param version: the distribution version
-        :param data: metadata about the distribution
+        :param metadata: the distribution's metadata
         """
         pass
 

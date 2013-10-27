@@ -1,5 +1,5 @@
 """
-Version utilities.
+Version and metadata utilities.
 """
 from pkg_resources import parse_version
 

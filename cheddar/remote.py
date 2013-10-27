@@ -11,6 +11,7 @@ from requests import codes, get
 from werkzeug.exceptions import HTTPException
 
 from cheddar.index import Index
+from cheddar.versions import guess_name_and_version
 
 
 class RemoteIndex(Index):
@@ -22,7 +23,7 @@ class RemoteIndex(Index):
         self.get_timeout = app.config["GET_TIMEOUT"]
         self.logger = app.logger
 
-    def register(self, name, version, data):
+    def register(self, **metadata):
         """
         Unsupported.
         """
@@ -53,9 +54,8 @@ class RemoteIndex(Index):
         if response.status_code != codes.ok:
             self.logger.info("Remote releases listing not found: {}".format(response.status_code))
             abort(codes.not_found)
-        soup = BeautifulSoup(response.text)
 
-        releases = {node.text: "remote" + get_absolute_path(self.index_url, node["href"]) for node in soup.findAll("a")}
+        releases = {name: "remote{}".format(path) for name, path in self._iter_release_links(response.text)}
 
         self.logger.debug("Obtained remote releases listing for: {}: {}".format(name, releases))
         return releases
@@ -79,6 +79,20 @@ class RemoteIndex(Index):
         Unsupported.
         """
         pass
+
+    def _iter_release_links(self, html):
+        """
+        Iterate through release links (in order), filtering out links that
+        don't "look" like releases.
+        """
+        soup = BeautifulSoup(html)
+        for node in soup.findAll("a"):
+            try:
+                name, version = guess_name_and_version(node.text)
+            except ValueError:
+                # couldn't parse name and version, probably the wrong kind of link
+                continue
+            yield node.text, get_absolute_path(self.index_url, node["href"])
 
 
 class CachedRemoteIndex(RemoteIndex):
@@ -117,12 +131,13 @@ class CachedRemoteIndex(RemoteIndex):
             if error.code == codes.not_found:
                 # Cache negative
                 self.logger.debug("Caching negative releases listing for: {}".format(name))
-                self.redis.setex(key, dumps({}), self.releases_ttl)
-            self.logger.warn("Unexpected error querying remote releases", exc_info=True)
+                self.redis.setex(key, time=int(self.releases_ttl), value=dumps({}))
+            else:
+                self.logger.warn("Unexpected error querying remote releases", exc_info=True)
             raise
         else:
             self.logger.debug("Caching positive releases listing for: {}".format(name))
-            self.redis.setex(key, dumps(computed_releases), self.releases_ttl)
+            self.redis.setex(key, time=int(self.releases_ttl), value=dumps(computed_releases))
         self.logger.debug(computed_releases)
         return computed_releases
 

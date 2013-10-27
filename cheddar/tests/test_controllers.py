@@ -1,0 +1,159 @@
+"""
+Test controller behavior.
+"""
+from contextlib import contextmanager
+from json import loads
+from os import environ
+from os.path import dirname, join
+from shutil import copyfile, rmtree
+from tempfile import mkdtemp
+from textwrap import dedent
+
+from mock import patch
+from mockredis import MockRedis
+from nose.tools import assert_raises, eq_
+from requests import codes
+
+from cheddar.app import create_app
+
+# Tests that would still be nice to write:
+# - Register
+# - Upload
+
+
+class TestControllers(object):
+
+    def setup(self):
+        self.config_dir = mkdtemp()
+        self.config_file = join(self.config_dir, "cheddar.conf")
+        self.local_cache_dir = mkdtemp()
+        self.remote_cache_dir = mkdtemp()
+
+        with open(self.config_file, "w") as file_:
+            file_.write('LOCAL_CACHE_DIR = "{}"\n'.format(self.local_cache_dir))
+            file_.write('REMOTE_CACHE_DIR = "{}"\n'.format(self.remote_cache_dir))
+
+        self.previous_config_file = environ.get("CHEDDAR_SETTINGS")
+        environ["CHEDDAR_SETTINGS"] = self.config_file
+
+        with patch('cheddar.configure.Redis', MockRedis):
+            self.app = create_app(testing=True)
+
+        self.client = self.app.test_client()
+        self.use_json = dict(accept="application/json; charset=UTF-8")
+
+    def teardown(self):
+        if self.previous_config_file is None:
+            del environ["CHEDDAR_SETTINGS"]
+        else:
+            environ["CHEDDAR_SETTINGS"] = self.previous_config_file
+
+        rmtree(self.local_cache_dir)
+        rmtree(self.remote_cache_dir)
+        rmtree(self.config_dir)
+
+    def test_index_template_render(self):
+        result = self.client.get("/")
+        eq_(result.status_code, codes.ok)
+
+    def test_index_template_json(self):
+        result = self.client.get("/", headers=self.use_json)
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict())
+
+    def test_simple_no_packages_template_render(self):
+        result = self.client.get("/simple")
+        eq_(result.status_code, codes.ok)
+
+    def test_simple_no_packages_json(self):
+        result = self.client.get("/simple", headers=self.use_json)
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict(packages=[]))
+
+    def test_simple_two_packages_json(self):
+        self.app.index.local._add(**{"name": "foo", "version": "1.0"})
+        self.app.index.local._add(**{"name": "bar", "version": "1.1"})
+
+        result = self.client.get("/simple", headers=self.use_json)
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict(packages=["bar", "foo"]))
+
+    def test_list_releases_template_render(self):
+        self.app.index.local._add(**{"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.index.local._add(**{"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+        self.app.index.local._add(**{"name": "foo", "version": "1.0.dev1", "_filename": "foo-1.0.dev1.tar.gz"})
+
+        with self._mocked_get("http://pypi.python.org/simple/foo", codes.ok) as mock_get:
+            mock_get.return_value.text = dedent("""\
+                <html>
+                  <body>
+                     <a href="../../packages/foo/foo-1.0c1.tar.gz">foo-1.0c1.tar.gz</a>
+                  </body>
+                </html>""")
+            result = self.client.get("/simple/foo")
+
+        eq_(result.status_code, codes.ok)
+        iter_ = self.app.index.remote._iter_release_links(result.data)
+        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
+        with assert_raises(StopIteration):
+            iter_.next()
+
+    def test_list_releases_json(self):
+        self.app.index.local._add(**{"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.index.local._add(**{"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+
+        with self._mocked_get("http://pypi.python.org/simple/foo", codes.not_found):
+            result = self.client.get("/simple/foo", headers=self.use_json)
+
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict(releases={"foo-1.0.tar.gz": "local/foo-1.0.tar.gz",
+                                               "foo-1.1.tar.gz": "local/foo-1.1.tar.gz"}))
+
+    def test_get_local_distribution(self):
+        distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
+        copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
+        self.app.index.local._add(**{"name": "example", "version": "1.0", "_filename": distribution})
+
+        result = self.client.get("/local/example-1.0.tar.gz")
+
+        eq_(result.status_code, codes.ok)
+        eq_(result.headers["Content-Type"], "application/x-gzip")
+        eq_(result.headers["Content-Length"], "843")
+
+    def test_get_remote_distribution(self):
+        template = join(dirname(__file__), "data/example-1.0.tar.gz")
+
+        with self._mocked_get("http://pypi.python.org/foo/example-1.0.tar.gz", codes.ok) as mock_get:
+            with open(template) as file_:
+                mock_get.return_value.content = file_.read()
+            mock_get.return_value.headers = {"Content-Type": "application/x-gzip",
+                                             "Content-Length": "843"}
+            result = self.client.get("/remote/foo/example-1.0.tar.gz")
+
+        eq_(result.status_code, codes.ok)
+        eq_(result.headers["Content-Type"], "application/x-gzip")
+        eq_(result.headers["Content-Length"], "843")
+
+    def test_get_remote_distribution_cached(self):
+        template = join(dirname(__file__), "data/example-1.0.tar.gz")
+        distribution = join(self.remote_cache_dir, "releases", "example-1.0.tar.gz")
+        copyfile(template, distribution)
+
+        result = self.client.get("/remote/foo/example-1.0.tar.gz")
+
+        eq_(result.status_code, codes.ok)
+        eq_(result.headers["Content-Type"], "application/x-gzip")
+        eq_(result.headers["Content-Length"], "843")
+
+    @contextmanager
+    def _mocked_get(self, url, status_code):
+        with patch("cheddar.remote.get") as mock_get:
+            mock_get.return_value.status_code = status_code
+
+            yield mock_get
+
+            mock_get.assert_called_with(url,
+                                        timeout=self.app.config["GET_TIMEOUT"])

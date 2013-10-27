@@ -18,7 +18,7 @@ class LocalIndex(Index):
         self.storage = app.local_storage
         self.logger = app.logger
 
-    def register(self, name, version, metadata):
+    def register(self, **metadata):
         """
         Register a distribution:
 
@@ -26,11 +26,9 @@ class LocalIndex(Index):
         - Record name, version in list of release for package
         - Record metadata for release
         """
-        self.logger.info("Registering local distribution: {} {}".format(name, version))
-        self.redis.sadd(self._packages_key(), name)
-        self.redis.sadd(self._releases_key(name), version)
-        self.logger.debug("Saving local distribution meta data: {}".format(metadata))
-        self.redis.hmset(self._release_key(name, version), metadata)
+        self.logger.info("Registering local distribution: {}".format(metadata))
+        self._validate(**metadata)
+        self._add(**metadata)
 
     def upload(self, upload_file):
         """
@@ -107,7 +105,7 @@ class LocalIndex(Index):
 
         result = self.storage.read(path)
         if result is None:
-            self.logger.info("Release not found for: {}: {}".format(path))
+            self.logger.info("Release not found for: {}".format(path))
             abort(codes.not_found)
 
         # don't log binary release content (.tar.gz, .zip, etc.), even at debug
@@ -146,3 +144,18 @@ class LocalIndex(Index):
 
     def _release_key(self, name, version):
         return "cheddar.local.{}-{}".format(name, version)
+
+    def _validate(self, **metadata):
+        for required in ["name", "version"]:
+            if required not in metadata:
+                abort(400)
+
+    def _add(self, **metadata):
+        name, version = metadata["name"], metadata["version"]
+
+        self.logger.debug("Saving available distribution: {} {}".format(name, version))
+        self.redis.sadd(self._packages_key(), name)
+        self.redis.sadd(self._releases_key(name), version)
+
+        self.logger.debug("Saving local distribution meta data: {}".format(metadata))
+        self.redis.hmset(self._release_key(name, version), metadata)
