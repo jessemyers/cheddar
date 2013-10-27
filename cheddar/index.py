@@ -11,13 +11,12 @@ class Index(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def register(self, name, version, data):
+    def validate_metadata(self, **metadata):
         """
-        Register a distribution.
+        Validate a distribution's metadata.
 
-        :param name: the distribution name
-        :param version: the distribution version
-        :param data: metadata about the distribution
+        :param metadata: the distribution's metadata
+        :returns: whether the metadata was valid
         """
         pass
 

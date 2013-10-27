@@ -8,13 +8,13 @@ __build__ = ''
 
 setup(name='cheddar',
       version=__version__ + __build__,
-      description='PyPI clone',
+      description='PyPI clone with Flask and Redis',
       author='Jesse Myers',
       author_email='jesse@locationlabs.com',
       url='https://github.com/jessemyers/cheddar',
       packages=find_packages(exclude=['*.tests']),
       setup_requires=[
-          #'nose>=1.0',
+          'nose>=1.3.0',
       ],
       install_requires=[
           'Flask>=0.10',
@@ -25,6 +25,8 @@ setup(name='cheddar',
           'pkginfo>=1.1',
       ],
       tests_require=[
+          'mock>=1.0.1',
+          'mockredisypy>=2.7.5.1',
       ],
       test_suite='cheddar.tests',
       entry_points={

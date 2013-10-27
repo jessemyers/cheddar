@@ -4,7 +4,7 @@ URL mappings for package index functionality.
 from collections import OrderedDict
 from functools import wraps
 
-from flask import abort, make_response, render_template, request
+from flask import abort, jsonify, make_response, render_template, request
 
 from cheddar.auth import check_authentication
 from cheddar.versions import sort_key
@@ -31,7 +31,7 @@ def create_routes(app):
         Index page.
         """
         app.logger.debug("Showing index page")
-        return render_template("index.html")
+        return _render("index.html")
 
     @app.route("/simple/")
     @app.route("/simple")
@@ -42,12 +42,12 @@ def create_routes(app):
         Lists known packages.
         """
         app.logger.debug("Showing package index")
-        return render_template("simple.html",
-                               packages=sorted(app.index.get_local_packages()))
+        return _render("simple.html",
+                       packages=sorted(app.index.get_local_packages()))
 
     @app.route("/simple/<name>/")
     @app.route("/simple/<name>")
-    def get_package(name):
+    def list_releases(name):
         """
         Simple package index for a single package.
 
@@ -60,8 +60,8 @@ def create_routes(app):
         for name in sorted(releases.keys(), key=sort_key):
             sorted_releases[name] = releases[name]
 
-        return render_template("package.html",
-                               releases=sorted_releases)
+        return _render("package.html",
+                       releases=sorted_releases)
 
     @app.route("/simple/<name>/<version>/", methods=["DELETE"])
     @app.route("/simple/<name>/<version>", methods=["DELETE"])
@@ -106,12 +106,10 @@ def create_routes(app):
         """
         PyPI upload endpoint, handles setuptools register and upload commands.
         """
-        if "content" in request.files:
+        if request.files:
             return upload()
-        elif "name" in request.form and "version" in request.form:
-            return register()
         else:
-            abort(400)
+            return register()
 
     @authenticated
     def upload():
@@ -119,7 +117,10 @@ def create_routes(app):
         Upload distribution data. Requires auth.
         """
         app.logger.debug("Uploading distribution")
-        app.index.upload(request.files["content"])
+
+        _, upload_file = next(request.files.iterlists())
+        app.index.upload(upload_file[0])
+
         return ""
 
     def register():
@@ -127,9 +128,38 @@ def create_routes(app):
         Register a distribution.
 
         For no reason that I understand, setuptools does not send Basic Auth
-        credentials for register, so this is *not* authenticated.
+        credentials for register, so this is *not* authenticated and only
+        validates the metadata.
         """
         app.logger.debug("Registering distribution")
-        data = {key: values[0] for key, values in request.form.iterlists()}
-        app.index.register(data["name"], data["version"], data)
+
+        metadata = {key: values[0] for key, values in request.form.iterlists()}
+        if not app.index.validate_metadata(**metadata):
+            abort(400)
+
         return ""
+
+    def _render(template, **data):
+        """
+        Render response as either a template or just the raw JSON data.
+        """
+        if _wants_json():
+            return jsonify(data)
+        else:
+            return render_template(template, **data)
+
+    def _wants_json():
+        """
+        Should response use JSON?
+        """
+        for mime_type, _ in request.accept_mimetypes:
+            # If we see a mime type that means HTML before JSON, return False
+            if mime_type.startswith("text/html"):
+                return False
+            elif mime_type.startswith("application/xhtml"):
+                return False
+            # If we see JSON explicitly, return True
+            elif mime_type.startswith("application/json"):
+                return True
+        # Default to False (HTML)
+        return False

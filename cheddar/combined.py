@@ -19,12 +19,11 @@ class CombinedIndex(Index):
         self.remote = CachedRemoteIndex(app)
         self.logger = app.logger
 
-    def register(self, name, version, data):
+    def validate_metadata(self, **metadata):
         """
-        Register to the local index.
+        Validate against the local index.
         """
-        local = self.local.register(name, version, data)
-        return local
+        return self.local.validate_metadata(**metadata)
 
     def upload(self, upload_file):
         """
