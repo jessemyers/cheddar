@@ -147,6 +147,25 @@ class TestControllers(object):
         eq_(result.headers["Content-Type"], "application/x-gzip")
         eq_(result.headers["Content-Length"], "843")
 
+    def test_get_version_unknown_project(self):
+        result = self.client.get("/simple/example/1.0")
+        eq_(result.status_code, codes.not_found)
+
+    def test_get_version_unknown_version(self):
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        result = self.client.get("/simple/example/1.1")
+        eq_(result.status_code, codes.not_found)
+
+    def test_get_version(self):
+        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        result = self.client.get("/simple/example/1.0", headers=self.use_json)
+        eq_(result.status_code, codes.ok)
+        eq_(loads(result.data), dict(project="example",
+                                     version="1.0",
+                                     metadata=dict(name="example",
+                                                   version="1.0",
+                                                   _filename="example-1.0.tar.gz")))
+
     def test_get_remote_distribution_cached(self):
         template = join(dirname(__file__), "data/example-1.0.tar.gz")
         distribution = join(self.remote_cache_dir, "releases", "example-1.0.tar.gz")
