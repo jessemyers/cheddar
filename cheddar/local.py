@@ -2,6 +2,7 @@
 Implements a local package index.
 """
 from flask import abort
+from json import dumps, loads
 from requests import codes
 from werkzeug import secure_filename
 
@@ -44,10 +45,12 @@ class LocalIndex(Index):
     def get_metadata(self, name, version):
         self.logger.info("Getting local metatdata for: {} {}".format(name, version))
 
-        metadata = self.redis.hgetall(self._version_key(name, version))
-        if metadata is None:
+        raw_metadata = self.redis.get(self._version_key(name, version))
+        if raw_metadata is None:
             self.logger.info("Metadata not found for: {} {}".format(name, version))
             return None
+
+        metadata = loads(raw_metadata)
 
         if "_filename" not in metadata:
             self.logger.info("Incomplete metadata for: {} {}".format(name, version))
@@ -73,20 +76,14 @@ class LocalIndex(Index):
         """
         self.logger.info("Removing version: {} {}".format(name, version))
 
-        key = self._version_key(name, version)
-        if not self.redis.exists(key):
+        metadata = self.get_metadata(name, version)
+        if metadata is None:
             self.logger.info("Version not found: {} {}".format(name, version))
             abort(codes.not_found)
 
-        filename = self.redis.hget(key, "_filename")
-        self.storage.remove(filename)
+        self.storage.remove(metadata["_filename"])
 
-        # Here be race conditions...
-        self.redis.delete(key)
-        self.redis.srem(self._versions_key(name), version)
-        if self.redis.scard(self._versions_key(name)) == 0:
-            self.redis.srem(self._projects_key(), name)
-            self.redis.delete(self._versions_key(name))
+        self._remove_metadata(name, version)
 
     def validate_metadata(self, metadata):
         """
@@ -135,7 +132,7 @@ class LocalIndex(Index):
             self.storage.remove(filename)
             raise
         else:
-            self._add(metadata)
+            self._add_metadata(metadata)
 
     def _projects_key(self):
         return "cheddar.local"
@@ -146,7 +143,7 @@ class LocalIndex(Index):
     def _version_key(self, name, version):
         return "cheddar.local.{}-{}".format(name, version)
 
-    def _add(self, metadata):
+    def _add_metadata(self, metadata):
         name, version = metadata["name"], metadata["version"]
 
         self.logger.debug("Saving distribution: {} {}".format(name, version))
@@ -154,4 +151,12 @@ class LocalIndex(Index):
         self.redis.sadd(self._versions_key(name), version)
 
         self.logger.debug("Saving distribution metadata: {}".format(metadata))
-        self.redis.hmset(self._version_key(name, version), metadata)
+        self.redis.set(self._version_key(name, version), dumps(metadata))
+
+    def _remove_metadata(self, name, version):
+        # Here be race conditions...
+        self.redis.delete(self._version_key(name, version))
+        self.redis.srem(self._versions_key(name), version)
+        if self.redis.scard(self._versions_key(name)) == 0:
+            self.redis.srem(self._projects_key(), name)
+            self.redis.delete(self._versions_key(name))

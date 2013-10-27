@@ -5,7 +5,7 @@
 
         <!-- Main component for a primary marketing message or call to action -->
         <div class="jumbotron">
-            <h1>Versions for {{ project }}</h1>
+            <h1>{{ project }}</h1>
             <ul class="list-group">
                 {% for version, location in versions.iteritems() %}
                     <li class="list-group-item"><a href="../../{{ location }}">{{ version }}</a></br></li>

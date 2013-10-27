@@ -51,9 +51,12 @@ def create_routes(app):
         """
         List versions for a hosted project.
         """
-        app.logger.debug("Showing package index for: {}".format(name))
+        app.logger.info("Showing package index for: {}".format(name))
 
         versions = app.index.get_versions(name)
+
+        if not versions:
+            abort(404)
 
         sorted_versions = OrderedDict()
         for version in sorted(versions.keys(), key=sort_key):
@@ -61,8 +64,27 @@ def create_routes(app):
 
         return _render("project.html", project=name, versions=sorted_versions)
 
-    @app.route("/simple/<name>/<version>/", methods=["DELETE"])
-    @app.route("/simple/<name>/<version>", methods=["DELETE"])
+    @app.route("/simple/<name>/<version>/", methods=["GET", "DELETE"])
+    @app.route("/simple/<name>/<version>", methods=["GET", "DELETE"])
+    def handle_version(name, version):
+        if request.method == "DELETE":
+            return remove_version(name, version)
+        else:
+            return get_version(name, version)
+
+    def get_version(name, version):
+        """
+        Get metadata for version.
+        """
+        app.logger.debug("Getting: {} {}".format(name, version))
+
+        metadata = app.index.get_metadata(name, version)
+
+        if metadata is None:
+            abort(404)
+
+        return _render("version.html", project=name, version=version, metadata=metadata)
+
     @authenticated
     def remove_version(name, version):
         """

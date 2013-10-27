@@ -23,6 +23,7 @@ def configure_app(app, debug=False, testing=False):
     _configure_from_defaults(app)
     _configure_from_environment(app)
     _configure_logging(app)
+    _configure_jinja(app)
 
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
@@ -65,3 +66,10 @@ def _configure_logging(app):
         ))
 
         app.logger.addHandler(file_handler)
+
+
+def _configure_jinja(app):
+    def islist(obj):
+        return isinstance(obj, list)
+
+    app.jinja_env.filters.update({"islist": islist})
