@@ -11,8 +11,8 @@ INDEX_URL = "http://pypi.python.org/simple"
 # Where do we find Redis?
 REDIS_HOSTNAME = 'localhost'
 
-# How many seconds should we cache releases content?
-RELEASES_TTL = 600
+# How many seconds should we cache version content?
+VERSIONS_TTL = 600
 
 # How long should we wait for remote HTTP requests to complete?
 # Note that "pip install" has a default timeout of 15 seconds...

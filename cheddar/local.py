@@ -12,16 +12,85 @@ from cheddar.versions import (guess_name_and_version,
 
 class LocalIndex(Index):
     """
-    Support register, upload, and retreival of packages.
+    Support register, upload, and management of locally hosted projects.
     """
     def __init__(self, app):
         self.redis = app.redis
         self.storage = app.local_storage
         self.logger = app.logger
 
-    def validate_metadata(self, **metadata):
+    def get_projects(self):
+        self.logger.info("Getting local projects")
+
+        local_projects = self.redis.smembers(self._projects_key())
+
+        self.logger.debug("Obtained local projects: {}".format(list(local_projects)))
+        return local_projects
+
+    def get_versions(self, name):
+        self.logger.info("Getting local versions listing for: {}".format(name))
+
+        versions = {}
+        for version in self.redis.smembers(self._versions_key(name)):
+            metadata = self.get_metadata(name, version)
+            if metadata is not None:
+                filename = metadata["_filename"]
+                location = "local/{}".format(filename)
+                versions[filename] = location
+
+        self.logger.debug("Obtained local versions listing for: {}: {}".format(name, versions))
+        return versions
+
+    def get_metadata(self, name, version):
+        self.logger.info("Getting local metatdata for: {} {}".format(name, version))
+
+        metadata = self.redis.hgetall(self._version_key(name, version))
+        if metadata is None:
+            self.logger.info("Metadata not found for: {} {}".format(name, version))
+            return None
+
+        if "_filename" not in metadata:
+            self.logger.info("Incomplete metadata for: {} {}".format(name, version))
+            return None
+
+        self.logger.debug("Obtained metadata: {} for: {}: {}".format(metadata, name, version))
+        return metadata
+
+    def get_distribution(self, location, **kwargs):
+        self.logger.info("Getting local distribution: {}".format(location))
+
+        result = self.storage.read(location)
+        if result is None:
+            self.logger.info("Distribution not found for: {}".format(location))
+            abort(codes.not_found)
+
+        # don't log binary version content (.tar.gz, .zip, etc.), even at debug
+        return result
+
+    def remove_version(self, name, version):
         """
-        Validate that name and version are provided in a distribution's metadata.
+        Remove redis and file data for project version.
+        """
+        self.logger.info("Removing version: {} {}".format(name, version))
+
+        key = self._version_key(name, version)
+        if not self.redis.exists(key):
+            self.logger.info("Version not found: {} {}".format(name, version))
+            abort(codes.not_found)
+
+        filename = self.redis.hget(key, "_filename")
+        self.storage.remove(filename)
+
+        # Here be race conditions...
+        self.redis.delete(key)
+        self.redis.srem(self._versions_key(name), version)
+        if self.redis.scard(self._versions_key(name)) == 0:
+            self.redis.srem(self._projects_key(), name)
+            self.redis.delete(self._versions_key(name))
+
+    def validate_metadata(self, metadata):
+        """
+        Validate that name and version are provided in the metadata.
         """
         self.logger.info("Validating metadata: {}".format(metadata))
         for required in ["name", "version"]:
@@ -31,18 +100,11 @@ class LocalIndex(Index):
 
     def upload_distribution(self, upload_file):
         """
-        Upload a distribution:
-
-        - Record name in list of all local packages
-        - Record name, version in list of release for package
-        - Record metadata for release
-        - Validate name and version
-        - Write to local storage
-        - Record location in metadata
+        Upload distribution file and update redis data.
         """
         filename = secure_filename(upload_file.filename)
         self.logger.info("Uploading distribution: {}".format(filename))
-        # don't log binary release content (.tar.gz, .zip, etc.), even at debug
+        # don't log binary version content (.tar.gz, .zip, etc.), even at debug
 
         if self.storage.exists(filename):
             self.logger.warn("Aborting upload of: {}; already exists".format(filename))
@@ -57,7 +119,7 @@ class LocalIndex(Index):
             metadata = read_metadata(path)
 
             # make sure it validates and nothing fishy is going on
-            if not self.validate_metadata(**metadata) or "_filename" in metadata:
+            if not self.validate_metadata(metadata) or "_filename" in metadata:
                 abort(400)
 
             # make sure it is consistent with filename
@@ -73,80 +135,23 @@ class LocalIndex(Index):
             self.storage.remove(filename)
             raise
         else:
-            self._add(**metadata)
+            self._add(metadata)
 
-    def get_packages(self):
-        self.logger.info("Getting local packages")
-
-        local_packages = self.redis.smembers(self._packages_key())
-        self.logger.debug("Obtained local packages: {}".format(list(local_packages)))
-
-        return local_packages
-
-    def get_releases(self, name):
-        self.logger.info("Getting local releases listing for: {}".format(name))
-        releases = {}
-        for version in self.redis.smembers(self._releases_key(name)):
-            filename = self.redis.hget(self._release_key(name, version), "_filename")
-            if filename is not None:
-                path = "local/{}".format(filename)
-                releases[filename] = path
-
-        self.logger.debug("Obtained local releases listing for: {}: {}".format(name, releases))
-        return releases
-
-    def get_release(self, path, local):
-        self.logger.info("Getting local release: {}".format(path))
-
-        result = self.storage.read(path)
-        if result is None:
-            self.logger.info("Release not found for: {}".format(path))
-            abort(codes.not_found)
-
-        # don't log binary release content (.tar.gz, .zip, etc.), even at debug
-        return result
-
-    def remove_release(self, name, version):
-        """
-        Remove a distribution.
-
-        - Remove from local storage.
-        - Remove register record.
-        - Remove version from releases list.
-        - If no versions are left, remove from packages list.
-        """
-        self.logger.info("Removing release: {} {}".format(name, version))
-
-        key = self._release_key(name, version)
-        if not self.redis.exists(key):
-            self.logger.info("Release not found: {} {}".format(name, version))
-            abort(codes.not_found)
-
-        filename = self.redis.hget(key, "_filename")
-        self.storage.remove(filename)
-
-        # Here be race conditions...
-        self.redis.delete(key)
-        self.redis.srem(self._releases_key(name), version)
-        if self.redis.scard(self._releases_key(name)) == 0:
-            self.redis.srem(self._packages_key(), name)
-            self.redis.delete(self._releases_key(name))
-
-    def _packages_key(self):
+    def _projects_key(self):
         return "cheddar.local"
 
-    def _releases_key(self, name):
+    def _versions_key(self, name):
         return "cheddar.local.{}".format(name)
 
-    def _release_key(self, name, version):
+    def _version_key(self, name, version):
         return "cheddar.local.{}-{}".format(name, version)
 
-    def _add(self, **metadata):
+    def _add(self, metadata):
         name, version = metadata["name"], metadata["version"]
 
         self.logger.debug("Saving distribution: {} {}".format(name, version))
-        self.redis.sadd(self._packages_key(), name)
-        self.redis.sadd(self._releases_key(name), version)
+        self.redis.sadd(self._projects_key(), name)
+        self.redis.sadd(self._versions_key(name), version)
 
         self.logger.debug("Saving distribution metadata: {}".format(metadata))
-        self.redis.hmset(self._release_key(name, version), metadata)
+        self.redis.hmset(self._version_key(name, version), metadata)
