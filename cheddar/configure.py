@@ -1,7 +1,6 @@
 """
 Configure the Flask application.
 """
-import logging
 from logging.config import dictConfig
 
 from flask import request
@@ -61,6 +60,8 @@ def _configure_from_environment(app):
 def _configure_logging(app):
     if app.debug or app.testing:
         app.config['LOGGING']['loggers']['']['handlers'] = ['console']
+        if 'app' in app.config['LOGGING']['handlers']:
+            del app.config['LOGGING']['handlers']['app']
 
     dictConfig(app.config['LOGGING'])
 
