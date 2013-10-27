@@ -31,7 +31,7 @@ setup(name='cheddar',
       ],
       tests_require=[
           'mock>=1.0.1',
-          'mockredisypy>=2.7.5.1',
+          'mockredispy>=2.7.5.1',
       ],
       test_suite='cheddar.tests',
       entry_points={
