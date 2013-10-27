@@ -2,7 +2,7 @@
 Configure the Flask application.
 """
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from logging.config import dictConfig
 
 from flask import request
 from redis import Redis
@@ -17,6 +17,7 @@ def configure_app(app, debug=False, testing=False):
     """
     Load configuration and initialize collaborators.
     """
+
     app.debug = debug
     app.testing = testing
 
@@ -58,14 +59,10 @@ def _configure_from_environment(app):
 
 
 def _configure_logging(app):
-    if not app.debug and not app.testing:
-        file_handler = TimedRotatingFileHandler(app.config["LOG_FILE"], when='d')
-        file_handler.setLevel(app.config["LOG_LEVEL"])
-        file_handler.setFormatter(logging.Formatter(
-            app.config["LOG_FORMAT"]
-        ))
+    if app.debug or app.testing:
+        app.config['LOGGING']['loggers']['']['handlers'] = ['console']
 
-        app.logger.addHandler(file_handler)
+    dictConfig(app.config['LOGGING'])
 
 
 def _configure_jinja(app):

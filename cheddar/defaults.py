@@ -25,6 +25,41 @@ REMOTE_CACHE_DIR = "/var/tmp/cheddar-{}/remote".format(getuser())
 LOCAL_CACHE_DIR = "/var/tmp/cheddar-{}/local".format(getuser())
 
 # Logging configuration
-LOG_FILE = "/var/log/cheddar.log"
-LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-LOG_LEVEL = "DEBUG"
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'formatters': {
+        'debug': {
+            'format': '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+            'datefmt': '%Y%m%d',
+        },
+        'default': {
+            'format': '%(asctime)s - %(levelname)s - %(message)s',
+            'datefmt': '%Y%m%d',
+        },
+    },
+
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'level': 'DEBUG',
+            'formatter': 'debug',
+            'stream': 'ext://sys.stdout',
+            },
+        'app': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'level': 'DEBUG',
+            'formatter': 'default',
+            'filename': '/var/log/cheddar.log',
+            },
+        },
+
+    'loggers': {
+        '': {
+            'handlers': ['console', 'app',],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    }
+
+}
