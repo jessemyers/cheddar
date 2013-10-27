@@ -1,17 +1,18 @@
 """
 Test controller behavior.
 """
+from base64 import b64encode
 from contextlib import contextmanager
 from json import loads
 from os import environ
-from os.path import dirname, join
+from os.path import dirname, exists, join
 from shutil import copyfile, rmtree
 from tempfile import mkdtemp
 from textwrap import dedent
 
 from mock import patch
 from mockredis import MockRedis
-from nose.tools import assert_raises, eq_
+from nose.tools import assert_raises, eq_, ok_
 from requests import codes
 
 from cheddar.app import create_app
@@ -28,6 +29,8 @@ class TestControllers(object):
         self.config_file = join(self.config_dir, "cheddar.conf")
         self.local_cache_dir = mkdtemp()
         self.remote_cache_dir = mkdtemp()
+        self.username = "username"
+        self.password = "password"
 
         with open(self.config_file, "w") as file_:
             file_.write('LOCAL_CACHE_DIR = "{}"\n'.format(self.local_cache_dir))
@@ -41,6 +44,9 @@ class TestControllers(object):
 
         self.client = self.app.test_client()
         self.use_json = dict(accept="application/json; charset=UTF-8")
+        self.use_auth = dict(authorization="Basic {}".format(b64encode("{}:{}".format(self.username,
+                                                                                      self.password))))
+        self.app.redis.set("cheddar.user.{}".format(self.username), self.password)
 
     def teardown(self):
         if self.previous_config_file is None:
@@ -147,6 +153,26 @@ class TestControllers(object):
         eq_(result.status_code, codes.ok)
         eq_(result.headers["Content-Type"], "application/x-gzip")
         eq_(result.headers["Content-Length"], "843")
+
+    def test_delete_package(self):
+        distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
+        copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
+        self.app.index.local._add(**{"name": "example", "version": "1.0", "_filename": distribution})
+
+        eq_(self.app.redis.smembers("cheddar.local"), set(["example"]))
+        eq_(self.app.redis.smembers("cheddar.local.example"), set(["1.0"]))
+        eq_(self.app.redis.hlen("cheddar.local.example-1.0"), 3)
+        eq_(self.app.redis.hget("cheddar.local.example-1.0", "name"), "example")
+        eq_(self.app.redis.hget("cheddar.local.example-1.0", "version"), "1.0")
+        ok_(exists(distribution))
+
+        result = self.client.delete("/simple/example/1.0", headers=self.use_auth)
+        eq_(result.status_code, codes.ok)
+
+        eq_(self.app.redis.smembers("cheddar.local"), set())
+        ok_(not self.app.redis.exists("cheddar.local.example"))
+        ok_(not self.app.redis.exists("cheddar.local.example-1.0"))
+        ok_(not exists(distribution))
 
     @contextmanager
     def _mocked_get(self, url, status_code):

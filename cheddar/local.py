@@ -135,6 +135,7 @@ class LocalIndex(Index):
         self.redis.srem(self._releases_key(name), version)
         if self.redis.scard(self._releases_key(name)) == 0:
             self.redis.srem(self._packages_key(), name)
+            self.redis.delete(self._releases_key(name))
 
     def _packages_key(self):
         return "cheddar.local"
