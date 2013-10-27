@@ -21,23 +21,25 @@ class Index(object):
         pass
 
     @abstractmethod
-    def upload(self, upload_file):
+    def upload_distribution(self, upload_file):
         """
         Upload a distribution.
 
-        :param upload_file: the uploaded file
+        :param upload_file: an instance of `werkezeug.datastructures.FileStorage`
         """
         pass
 
     @abstractmethod
-    def get_local_packages(self):
+    def get_packages(self):
         """
-        :returns: a list of locally available packages
+        Get the list of locally available packages.
+
+        :returns: an iterable of package names
         """
         pass
 
     @abstractmethod
-    def get_available_releases(self, name):
+    def get_releases(self, name):
         """
         :param name: the distribution name
         :returns: a dictionary mapping releases to paths

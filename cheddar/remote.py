@@ -27,23 +27,21 @@ class RemoteIndex(Index):
         """
         Unsupported.
         """
-        pass
+        raise NotImplementedError("validate_metadata")
 
-    def upload(self, file_):
+    def upload_distribution(self, file_):
         """
         Unsupported.
         """
-        pass
+        raise NotImplementedError("upload_distribution")
 
-    def get_local_packages(self):
+    def get_packages(self):
         """
-        No local packages because the index is remote.
-
-        :returns: an empty list
+        Unsupported.
         """
-        return []
+        raise NotImplementedError("upload_distribution")
 
-    def get_available_releases(self, name):
+    def get_releases(self, name):
         """
         Request package data from remote index and parse HTML.
         """
@@ -109,24 +107,24 @@ class CachedRemoteIndex(RemoteIndex):
         self.releases_ttl = app.config["RELEASES_TTL"]
         self.logger = app.logger
 
-    def get_available_releases(self, name):
+    def get_releases(self, name):
         """
-        Adds redis caching to available releases data.
+        Adds redis caching to releases listing.
 
         Currently, does not implement negative caching.
         """
-        self.logger.info("Getting available cached releases for: {}".format(name))
+        self.logger.info("Checking for cached releases listing for: {}".format(name))
         key = "cheddar.remote.{}".format(name)
 
         # Check cache
         cached_releases = self.redis.get(key)
 
         if cached_releases is not None:
-            self.logger.debug("Found cached releases for: {}".format(name))
+            self.logger.debug("Found cached releases listing for: {}".format(name))
             return loads(cached_releases)
 
         try:
-            computed_releases = super(CachedRemoteIndex, self).get_available_releases(name)
+            computed_releases = super(CachedRemoteIndex, self).get_releases(name)
         except HTTPException as error:
             if error.code == codes.not_found:
                 # Cache negative
@@ -138,6 +136,7 @@ class CachedRemoteIndex(RemoteIndex):
         else:
             self.logger.debug("Caching positive releases listing for: {}".format(name))
             self.redis.setex(key, time=int(self.releases_ttl), value=dumps(computed_releases))
+
         self.logger.debug(computed_releases)
         return computed_releases
 

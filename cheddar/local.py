@@ -29,7 +29,7 @@ class LocalIndex(Index):
                 return False
         return True
 
-    def upload(self, upload_file):
+    def upload_distribution(self, upload_file):
         """
         Upload a distribution:
 
@@ -75,7 +75,7 @@ class LocalIndex(Index):
         else:
             self._add(**metadata)
 
-    def get_local_packages(self):
+    def get_packages(self):
         self.logger.info("Getting local packages")
 
         local_packages = self.redis.smembers(self._packages_key())
@@ -83,7 +83,7 @@ class LocalIndex(Index):
 
         return local_packages
 
-    def get_available_releases(self, name):
+    def get_releases(self, name):
         self.logger.info("Getting local releases listing for: {}".format(name))
         releases = {}
         for version in self.redis.smembers(self._releases_key(name)):
@@ -144,9 +144,9 @@ class LocalIndex(Index):
     def _add(self, **metadata):
         name, version = metadata["name"], metadata["version"]
 
-        self.logger.debug("Saving available distribution: {} {}".format(name, version))
+        self.logger.debug("Saving distribution: {} {}".format(name, version))
         self.redis.sadd(self._packages_key(), name)
         self.redis.sadd(self._releases_key(name), version)
 
-        self.logger.debug("Saving local distribution meta data: {}".format(metadata))
+        self.logger.debug("Saving distribution metadata: {}".format(metadata))
         self.redis.hmset(self._release_key(name, version), metadata)

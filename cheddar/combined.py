@@ -25,22 +25,21 @@ class CombinedIndex(Index):
         """
         return self.local.validate_metadata(**metadata)
 
-    def upload(self, upload_file):
+    def upload_distribution(self, upload_file):
         """
-        Upload to the local index.
+        Upload a distribution to the local index.
         """
-        return self.local.upload(upload_file)
+        return self.local.upload_distribution(upload_file)
 
-    def get_local_packages(self):
+    def get_packages(self):
         """
         Show packages in the local index.
         """
-        return self.local.get_local_packages()
+        return self.local.get_packages()
 
-    def get_available_releases(self, name):
+    def get_releases(self, name):
         """
-        Show available packages in both indexes, favoring
-        the local if there are conflicts.
+        Show packages from both indexes, favoring local packages if there are conflicts.
         """
         # remote access for packages that are local can be slow,
         # especially if there's a cache miss; we could check the
@@ -49,13 +48,13 @@ class CombinedIndex(Index):
         # locally
         self.logger.info("Computing combined releases listing for: {}".format(name))
         try:
-            releases = self.remote.get_available_releases(name)
+            releases = self.remote.get_releases(name)
         except HTTPException as error:
             if error.code != codes.not_found:
                 self.logger.warn("Unexpected response for remove releases listing for: {}: {}".format(name, error.code))
                 raise
             releases = {}
-        releases.update(self.local.get_available_releases(name))
+        releases.update(self.local.get_releases(name))
 
         self.logger.debug("Obtained combined releases listing for: {}: {}".format(name, releases))
         return releases

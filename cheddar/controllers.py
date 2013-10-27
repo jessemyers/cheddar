@@ -43,7 +43,7 @@ def create_routes(app):
         """
         app.logger.debug("Showing package index")
         return _render("simple.html",
-                       packages=sorted(app.index.get_local_packages()))
+                       packages=sorted(app.index.get_packages()))
 
     @app.route("/simple/<name>/")
     @app.route("/simple/<name>")
@@ -54,7 +54,7 @@ def create_routes(app):
         Lists known releases and their locations.
         """
         app.logger.debug("Showing package index for: {}".format(name))
-        releases = app.index.get_available_releases(name)
+        releases = app.index.get_releases(name)
 
         sorted_releases = OrderedDict()
         for name in sorted(releases.keys(), key=sort_key):
@@ -119,7 +119,8 @@ def create_routes(app):
         app.logger.debug("Uploading distribution")
 
         _, upload_file = next(request.files.iterlists())
-        app.index.upload(upload_file[0])
+        print upload_file[0]
+        app.index.upload_distribution(upload_file[0])
 
         return ""
 
