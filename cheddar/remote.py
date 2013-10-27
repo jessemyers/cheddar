@@ -41,7 +41,7 @@ class RemoteIndex(Index):
             self.logger.info("Remote version listing not found: {}".format(response.status_code))
             abort(codes.not_found)
 
-        versions = {name: "remote{}".format(path) for name, path in self._iter_version_links(response.text)}
+        versions = {name: "/remote{}".format(path) for name, path in self._iter_version_links(response.text)}
 
         self.logger.debug("Obtained remote version listing for: {}: {}".format(name, versions))
         return versions

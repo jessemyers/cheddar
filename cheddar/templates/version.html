@@ -6,7 +6,7 @@
         <!-- Main component for a primary marketing message or call to action -->
         <div class="jumbotron">
             <h1>{{ project }} {{ version }}</h1>
-            <a href="../../local/{{ metadata['_filename']}}" rel="download">download</a>
+            <a href="/local/{{ metadata['_filename']}}" rel="download">download</a>
             <dl>
                 {% for key, value in metadata|dictsort %}
                 {% if key not in ["name", "version", "_filename"] and value %}

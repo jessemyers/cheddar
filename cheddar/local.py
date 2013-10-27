@@ -36,7 +36,7 @@ class LocalIndex(Index):
             metadata = self.get_metadata(name, version)
             if metadata is not None:
                 filename = metadata["_filename"]
-                location = "local/{}".format(filename)
+                location = "/local/{}".format(filename)
                 versions[filename] = location
 
         self.logger.debug("Obtained local versions listing for: {}: {}".format(name, versions))

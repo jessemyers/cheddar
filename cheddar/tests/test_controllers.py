@@ -119,8 +119,8 @@ class TestControllers(object):
 
         eq_(result.status_code, codes.ok)
         eq_(loads(result.data), dict(project="foo",
-                                     versions={"foo-1.0.tar.gz": "local/foo-1.0.tar.gz",
-                                               "foo-1.1.tar.gz": "local/foo-1.1.tar.gz"}))
+                                     versions={"foo-1.0.tar.gz": "/local/foo-1.0.tar.gz",
+                                               "foo-1.1.tar.gz": "/local/foo-1.1.tar.gz"}))
 
     def test_get_local_distribution(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")

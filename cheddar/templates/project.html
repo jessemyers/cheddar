@@ -8,7 +8,7 @@
             <h1>{{ project }}</h1>
             <ul class="list-group">
                 {% for version, location in versions.iteritems() %}
-                    <li class="list-group-item"><a href="../../{{ location }}">{{ version }}</a></br></li>
+                    <li class="list-group-item"><a href="{{ location }}">{{ version }}</a></br></li>
                 {% endfor %}
             </ul>
 
