@@ -41,7 +41,7 @@ def create_routes(app):
         """
         app.logger.debug("Showing all projects")
 
-        projects = sorted(app.index.get_projects())
+        projects = sorted([project.name for project in app.index.get_projects()])
 
         return _render("simple.html", projects=projects)
 
