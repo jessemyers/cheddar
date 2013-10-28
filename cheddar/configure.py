@@ -27,7 +27,7 @@ def configure_app(app, debug=False, testing=False):
     _configure_jinja(app)
 
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
-    app.projects = Projects(app)
+    app.projects = Projects(app.redis, app.logger)
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
     app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"], app.logger)
     app.index = CombinedIndex(app)

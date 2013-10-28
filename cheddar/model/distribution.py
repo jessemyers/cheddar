@@ -9,10 +9,11 @@ class Projects(object):
     Collection of hosted projects.
     """
 
-    def __init__(self, app):
-        self.redis = app.redis
-        self.logger = app.logger
-        self.key = "cheddar.local"
+    def __init__(self, redis, logger, prefix=""):
+        self.redis = redis
+        self.logger = logger
+        self.prefix = prefix
+        self.key = "{}cheddar.local".format(self.prefix)
 
     def list_projects(self):
         """
@@ -87,8 +88,9 @@ class Project(object):
     def __init__(self, projects, name):
         self.redis = projects.redis
         self.logger = projects.logger
+        self.prefix = projects.prefix
         self.name = name
-        self.key = "cheddar.local.{}".format(self.name)
+        self.key = "{}cheddar.local.{}".format(self.prefix, self.name)
 
     def get_versions(self):
         """
@@ -140,9 +142,10 @@ class Version(object):
     def __init__(self, project, version):
         self.redis = project.redis
         self.logger = project.logger
+        self.prefix = project.prefix
         self.name = project.name
         self.version = version
-        self.key = "cheddar.local.{}-{}".format(self.name, self.version)
+        self.key = "{}cheddar.local.{}-{}".format(self.prefix, self.name, self.version)
 
     def get_metadata(self):
         """

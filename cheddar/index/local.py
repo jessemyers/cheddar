@@ -1,6 +1,8 @@
 """
 Implements a local package index.
 """
+from os.path import basename
+
 from flask import abort
 from requests import codes
 from werkzeug import secure_filename
@@ -108,23 +110,45 @@ class LocalIndex(Index):
         try:
             # extract metadata
             self.logger.debug("Parsing source distribution for metadata")
-            metadata = read_metadata(path)
-
-            # make sure it validates and nothing fishy is going on
-            if not self.validate_metadata(metadata) or "_filename" in metadata:
-                abort(400)
-
-            # make sure it is consistent with filename
-            expected_name, expected_version = guess_name_and_version(filename)
-            if metadata["name"] != expected_name or metadata["version"] != expected_version:
-                self.logger.warn("Aborting upload of: {}; conflicting filename and metadata".format(filename))
-                abort(codes.bad_request)
-
-            # include local path in metadata
-            metadata["_filename"] = filename
+            metadata = self._get_metadata(path, filename)
         except:
             self.logger.debug("Removing uploaded file: {} on error".format(filename))
             self.storage.remove(filename)
             raise
         else:
             self.projects.add_metadata(metadata)
+
+    def rebuild(self):
+        """
+        Rebuild redis index from file data.
+
+        Rebuilding the index does not currently discard old index data,
+        which could be accomplished by computing the set of all keys
+        before and after the rebuild and removing the difference.
+        """
+        for path in self.storage:
+            filename = basename(path)
+            metadata = self._get_metadata(path, filename)
+            self.projects.add_metadata(metadata)
+
+    def _get_metadata(self, path, filename):
+        metadata = read_metadata(path)
+
+        # make sure metadata validates
+        if not self.validate_metadata(metadata):
+            abort(codes.bad_request)
+
+        # make sure nothing fishy is going on
+        if metadata.get(Version.FILENAME) not in [None, filename]:
+            abort(codes.bad_request)
+
+        # make sure metadata is consistent with filename
+        expected_name, expected_version = guess_name_and_version(filename)
+        if metadata["name"] != expected_name or metadata["version"] != expected_version:
+            self.logger.warn("Aborting upload of: {}; conflicting filename and metadata".format(filename))
+            abort(codes.bad_request)
+
+        # include local path in metadata
+        metadata[Version.FILENAME] = filename
+
+        return metadata

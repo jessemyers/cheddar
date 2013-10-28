@@ -1,7 +1,7 @@
 """
 Implements distribution file storage.
 """
-from os import makedirs, remove
+from os import makedirs, remove, walk
 from os.path import basename, exists, isdir, join
 
 from magic import from_buffer
@@ -11,7 +11,7 @@ from cheddar.model.versions import is_pre_release
 
 class DistributionStorage(object):
     """
-    A section
+    File system storage with release/pre-release partitioning.
     """
 
     def __init__(self, base_dir, logger):
@@ -79,6 +79,11 @@ class DistributionStorage(object):
         path = join(base_dir, basename(name))
         self.logger.debug("Computed path: {} for: {}".format(path, name))
         return path
+
+    def __iter__(self):
+        for dirpath, _, filenames in walk(self.base_dir):
+            for filename in filenames:
+                yield join(dirpath, filename)
 
     def _make_base_dirs(self):
         """
