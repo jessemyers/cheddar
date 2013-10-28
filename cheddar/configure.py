@@ -10,6 +10,7 @@ from cheddar import defaults
 from cheddar.controllers import create_routes
 from cheddar.index.combined import CombinedIndex
 from cheddar.index.storage import DistributionStorage
+from cheddar.model.distribution import Projects
 
 
 def configure_app(app, debug=False, testing=False):
@@ -26,6 +27,7 @@ def configure_app(app, debug=False, testing=False):
     _configure_jinja(app)
 
     app.redis = Redis(app.config['REDIS_HOSTNAME'])
+    app.projects = Projects(app)
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
     app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"], app.logger)
     app.index = CombinedIndex(app)

@@ -73,17 +73,17 @@ class TestControllers(object):
         eq_(loads(result.data), dict(projects=[]))
 
     def test_get_projects_two_projects_json(self):
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.0"})
-        self.app.index.local._add_metadata({"name": "bar", "version": "1.1"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.0"})
+        self.app.projects.add_metadata({"name": "bar", "version": "1.1"})
 
         result = self.client.get("/simple", headers=self.use_json)
         eq_(result.status_code, codes.ok)
         eq_(loads(result.data), dict(projects=["bar", "foo"]))
 
     def test_get_project_local_template_render(self):
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.0.dev1", "_filename": "foo-1.0.dev1.tar.gz"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.0.dev1", "_filename": "foo-1.0.dev1.tar.gz"})
 
         result = self.client.get("/simple/foo")
 
@@ -112,8 +112,8 @@ class TestControllers(object):
             iter_.next()
 
     def test_get_project_json(self):
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
-        self.app.index.local._add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.0", "_filename": "foo-1.0.tar.gz"})
+        self.app.projects.add_metadata({"name": "foo", "version": "1.1", "_filename": "foo-1.1.tar.gz"})
 
         result = self.client.get("/simple/foo", headers=self.use_json)
 
@@ -125,7 +125,7 @@ class TestControllers(object):
     def test_get_local_distribution(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
-        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
+        self.app.projects.add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
 
         result = self.client.get("/local/example-1.0.tar.gz")
 
@@ -152,12 +152,12 @@ class TestControllers(object):
         eq_(result.status_code, codes.not_found)
 
     def test_get_version_unknown_version(self):
-        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        self.app.projects.add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
         result = self.client.get("/simple/example/1.1")
         eq_(result.status_code, codes.not_found)
 
     def test_get_version(self):
-        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
+        self.app.projects.add_metadata({"name": "example", "version": "1.0", "_filename": "example-1.0.tar.gz"})
         result = self.client.get("/simple/example/1.0", headers=self.use_json)
         eq_(result.status_code, codes.ok)
         eq_(loads(result.data), dict(project="example",
@@ -184,7 +184,7 @@ class TestControllers(object):
     def test_delete_version(self):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
-        self.app.index.local._add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
+        self.app.projects.add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
 
         eq_(self.app.redis.smembers("cheddar.local"), set(["example"]))
         eq_(self.app.redis.smembers("cheddar.local.example"), set(["1.0"]))
