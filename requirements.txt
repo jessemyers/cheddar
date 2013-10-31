@@ -1,8 +1,0 @@
-Flask>=0.10
-redis>=2.8.0
-requests>=2.0.0
-BeautifulSoup>=3.2.1
-python-magic>=0.4.6
-pkginfo>=1.1
-mock>=1.0.1
-mockredispy>=2.7.5.1
