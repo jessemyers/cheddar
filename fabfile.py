@@ -108,6 +108,7 @@ def disable():
 @task
 def uninstall():
     disable()
+    remove_virtualenv()
     remove_files()
     remove_directories()
     uninstall_packages()
