@@ -1,0 +1,11 @@
+"/var/log/cheddar/*.log" {
+ daily
+ missingok
+ rotate 7
+ compress
+ delaycompress
+ notifempty
+ postrotate
+     touch /var/run/cheddar/uwsgi_logreopen
+ endscript
+}

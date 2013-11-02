@@ -5,6 +5,7 @@ from fabric.api import env, put, sudo, task
 env.use_ssh_config = True
 
 PACKAGES = [
+    "logrotate",
     "nginx",
     "python2.7",
     "python-setuptools",
@@ -26,6 +27,7 @@ FILES = [
     "/etc/cheddar/cheddar.conf",
     "/etc/nginx/sites-available/cheddar",
     "/etc/cheddar/uwsgi.ini",
+    "/etc/logrotate.d/cheddar",
     "/etc/supervisor/conf.d/cheddar.conf",
 ]
 
