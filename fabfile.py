@@ -5,7 +5,6 @@ from fabric.api import env, put, sudo, task
 env.use_ssh_config = True
 
 PACKAGES = [
-    "logrotate",
     "nginx",
     "python2.7",
     "python-setuptools",
@@ -123,3 +122,9 @@ def install():
     create_files()
     create_virtualenv()
     enable()
+
+
+@task
+def upgrade():
+    sudo("/usr/lib/cheddar/venv/bin/pip install --upgrade -q git+https://github.com/jessemyers/cheddar.git@release/1.0#egg=cheddar")  # noqa
+    sudo("supervisorctl restart cheddar")
