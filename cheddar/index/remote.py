@@ -54,9 +54,9 @@ class RemoteIndex(Index):
             """
             if "#" in path:
                 base, fragment = path.split("#", 1)
-                return "/remote{}?base={}#{}".format(base, quote(get_base_url(location)), fragment)
+                return "/remote{}?base={}#{}".format(base, quote(get_base_url(location), ""), fragment)
             else:
-                return "/remote{}?base={}".format(path, quote(get_base_url(location)))
+                return "/remote{}?base={}".format(path, quote(get_base_url(location), ""))
 
         versions = {name: build_remote_path(path, location)
                     for name, path in self._iter_version_links(response.text, location)}

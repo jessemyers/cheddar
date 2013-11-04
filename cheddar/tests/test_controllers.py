@@ -88,7 +88,7 @@ class TestControllers(object):
         result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        iter_ = self.app.index.remote._iter_version_links(result.data)
+        iter_ = self.app.index.remote._iter_version_links(result.data, "http://pypi.python.org/simple")
         eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
         eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
         eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
@@ -106,8 +106,9 @@ class TestControllers(object):
             result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        iter_ = self.app.index.remote._iter_version_links(result.data)
-        eq_(iter_.next(), ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz"))
+        iter_ = self.app.index.remote._iter_version_links(result.data, "http://pypi.python.org/simple")
+        eq_(iter_.next(),
+            ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz?base=http%3A%2F%2Fpypi.python.org"))
         with assert_raises(StopIteration):
             iter_.next()
 
@@ -141,7 +142,7 @@ class TestControllers(object):
                 mock_get.return_value.content = file_.read()
             mock_get.return_value.headers = {"Content-Type": "application/x-gzip",
                                              "Content-Length": "843"}
-            result = self.client.get("/remote/foo/example-1.0.tar.gz")
+            result = self.client.get("/remote/foo/example-1.0.tar.gz?base=http%3A%2F%2Fpypi.python.org")
 
         eq_(result.status_code, codes.ok)
         eq_(result.headers["Content-Type"], "application/x-gzip")
@@ -171,7 +172,7 @@ class TestControllers(object):
         distribution = join(self.remote_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(template, distribution)
 
-        result = self.client.get("/remote/foo/example-1.0.tar.gz")
+        result = self.client.get("/remote/foo/example-1.0.tar.gz?base=http%3F%2F%2Fpypi.python.org")
 
         eq_(result.status_code, codes.ok)
         eq_(result.headers["Content-Type"], "application/x-gzip")
@@ -234,6 +235,8 @@ class TestControllers(object):
     def _mocked_get(self, url, status_code,):
         with patch("cheddar.index.remote.get") as mock_get:
             mock_get.return_value.status_code = status_code
+            mock_get.return_value.history = []
+            mock_get.return_value.headers = {}
 
             yield mock_get
 
