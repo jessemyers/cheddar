@@ -43,8 +43,7 @@ class RemoteIndex(Index):
             abort(codes.not_found)
 
         # Record the actual hostname used in case of redirection
-        headers = response.history[-1].headers if response.history else response.headers
-        location = headers.get("location", url)
+        location = get_request_location(response, url)
         self.logger.debug("Index location was: {}".format(location))
 
         def build_remote_path(path, location):
@@ -195,3 +194,27 @@ def get_base_url(url):
     """
     url_parts = list(urlsplit(url))
     return urlunsplit(url_parts[:2] + [""] * 3)
+
+
+def get_request_location(response, url):
+    """
+    Extract the request location from an HTTP response.
+    """
+    url_parts = urlsplit(url)
+    # parse the request url
+    scheme, netloc, path = url_parts.scheme, url_parts.netloc, url_parts.path
+
+    # walk the list of redirects and update the url parts
+    for redirect in response.history or [response]:
+        if "location" not in redirect.headers:
+            continue
+        redirect_parts = urlsplit(redirect.headers["location"])
+        if redirect_parts.scheme:
+            scheme = redirect_parts.scheme
+        if redirect_parts.netloc:
+            netloc = redirect_parts.netloc
+        if redirect_parts.path:
+            path = redirect_parts.path
+
+    # reconstruct the url (minus query string and fragments)
+    return urlunsplit([scheme, netloc, path] + [""] * 2)
