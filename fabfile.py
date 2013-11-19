@@ -75,7 +75,7 @@ def create_virtualenv():
     sudo("easy_install pip")
     sudo("pip install virtualenv")
     sudo("virtualenv /usr/lib/cheddar/venv")
-    sudo("/usr/lib/cheddar/venv/bin/pip install -q git+https://github.com/jessemyers/cheddar.git@release/1.0#egg=cheddar")  # noqa
+    sudo("/usr/lib/cheddar/venv/bin/pip install -q cheddar")  # noqa
     sudo("/usr/lib/cheddar/venv/bin/pip install -q 'uwsgi>=1.9.18.2'")
 
 
@@ -126,5 +126,5 @@ def install():
 
 @task
 def upgrade():
-    sudo("/usr/lib/cheddar/venv/bin/pip install --upgrade -q git+https://github.com/jessemyers/cheddar.git@release/1.0#egg=cheddar")  # noqa
+    sudo("/usr/lib/cheddar/venv/bin/pip install --upgrade cheddar")  # noqa
     sudo("supervisorctl restart cheddar")
