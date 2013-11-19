@@ -45,19 +45,19 @@ LOGGING = {
             'level': 'DEBUG',
             'formatter': 'debug',
             'stream': 'ext://sys.stdout',
-            },
+        },
         'app': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'level': 'DEBUG',
             'formatter': 'default',
-            'filename': '/var/log/cheddar.log',
-            },
+            'filename': '/var/log/cheddar/cheddar.log',
         },
+    },
 
     'loggers': {
         '': {
-            'handlers': ['console', 'app',],
-            'level': 'DEBUG',
+            'handlers': ['console', 'app'],
+            'level': 'INFO',
             'propagate': False,
         },
     }

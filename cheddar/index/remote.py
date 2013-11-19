@@ -3,6 +3,7 @@ Implements a remote (proxy) package index.
 """
 from json import dumps, loads
 from os.path import abspath, join
+from urllib import quote
 from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
@@ -41,7 +42,23 @@ class RemoteIndex(Index):
             self.logger.info("Remote version listing not found: {}".format(response.status_code))
             abort(codes.not_found)
 
-        versions = {name: "/remote{}".format(path) for name, path in self._iter_version_links(response.text)}
+        # Record the actual hostname used in case of redirection
+        location = get_request_location(response, url)
+        self.logger.debug("Index location was: {}".format(location))
+
+        def build_remote_path(path, location):
+            """
+            Embed the index location into the link. If there was an #md5= fragment, it must
+            come after the query string, so a little bit of gymnastics happens here.
+            """
+            if "#" in path:
+                base, fragment = path.split("#", 1)
+                return "/remote{}?base={}#{}".format(base, quote(get_base_url(location), ""), fragment)
+            else:
+                return "/remote{}?base={}".format(path, quote(get_base_url(location), ""))
+
+        versions = {name: build_remote_path(path, location)
+                    for name, path in self._iter_version_links(response.text, location)}
 
         self.logger.debug("Obtained remote version listing for: {}: {}".format(name, versions))
         return versions
@@ -52,15 +69,15 @@ class RemoteIndex(Index):
         """
         pass
 
-    def get_distribution(self, path, **kwargs):
+    def get_distribution(self, location, **kwargs):
         """
-        Request distribution data for path on the index server.
+        Request distribution data for remote location.
         """
-        self.logger.info("Getting remote distribution: {}".format(path))
+        self.logger.info("Getting remote distribution: {}".format(location))
 
-        response = get(make_absolute_url(self.index_url, path), timeout=self.get_timeout)
+        response = get(location, timeout=self.get_timeout)
         if response.status_code != codes.ok:
-            self.logger.info("Distribution not found for: {}: {}".format(path, response.status_code))
+            self.logger.info("Distribution not found for: {}: {}".format(location, response.status_code))
             abort(codes.not_found)
 
         # don't log binary distribution content (.tar.gz, .zip, etc.), even at debug
@@ -84,7 +101,7 @@ class RemoteIndex(Index):
         """
         raise NotImplementedError("upload_distribution")
 
-    def _iter_version_links(self, html):
+    def _iter_version_links(self, html, location):
         """
         Iterate through version links (in order), filtering out links that
         don't "look" like versions.
@@ -96,7 +113,7 @@ class RemoteIndex(Index):
             except ValueError:
                 # couldn't parse name and version, probably the wrong kind of link
                 continue
-            yield node.text, get_absolute_path(self.index_url, node["href"])
+            yield node.text, get_absolute_path(location, node["href"])
 
 
 class CachedRemoteIndex(RemoteIndex):
@@ -171,9 +188,33 @@ def get_absolute_path(url, path):
     return abspath(join(url_parts[2], path))
 
 
-def make_absolute_url(url, path):
+def get_base_url(url):
     """
-    Given a URL and an absolute path, construct a new URL with the new path.
+    Given a URL, strip everything except the protocol and hostname.
     """
     url_parts = list(urlsplit(url))
-    return urlunsplit(url_parts[:2] + [path] + url_parts[3:])
+    return urlunsplit(url_parts[:2] + [""] * 3)
+
+
+def get_request_location(response, url):
+    """
+    Extract the request location from an HTTP response.
+    """
+    url_parts = urlsplit(url)
+    # parse the request url
+    scheme, netloc, path = url_parts.scheme, url_parts.netloc, url_parts.path
+
+    # walk the list of redirects and update the url parts
+    for redirect in response.history or [response]:
+        if "location" not in redirect.headers:
+            continue
+        redirect_parts = urlsplit(redirect.headers["location"])
+        if redirect_parts.scheme:
+            scheme = redirect_parts.scheme
+        if redirect_parts.netloc:
+            netloc = redirect_parts.netloc
+        if redirect_parts.path:
+            path = redirect_parts.path
+
+    # reconstruct the url (minus query string and fragments)
+    return urlunsplit([scheme, netloc, path] + [""] * 2)

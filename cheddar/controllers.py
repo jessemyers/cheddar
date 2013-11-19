@@ -3,6 +3,7 @@ URL mappings for package index functionality.
 """
 from collections import OrderedDict
 from functools import wraps
+from urlparse import urljoin
 
 from flask import abort, jsonify, make_response, render_template, request
 
@@ -106,14 +107,19 @@ def create_routes(app):
         response.headers['Content-Type'] = content_type
         return response
 
-    @app.route("/remote/<path:location>/")
-    @app.route("/remote/<path:location>")
-    def get_remote_distribution(location):
+    @app.route("/remote/<path:path>/")
+    @app.route("/remote/<path:path>")
+    def get_remote_distribution(path):
         """
         Remote distribution download access.
 
         Proxies and caches content.
         """
+        # To account for redirects, we need to save the base url in the link URL along
+        # with the path to the distribution. It's still a little awkward because the
+        # urljoin logic happens here instead of within the remote index.
+        location = urljoin(request.args["base"], path)
+
         app.logger.debug("Getting remote distribution: {}".format(location))
         content_data, content_type = app.index.get_distribution(location, local=False)
         response = make_response(content_data)
