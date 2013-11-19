@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container">
+
+        <!-- Main component for a primary marketing message or call to action -->
+        <div class="jumbotron">
+            <h1>Hosted Projects</h1>
+            <ul class="list-group">
+                {% for project in projects %}
+                    <li class="list-group-item"><a href="/simple/{{ project }}">{{ project }}</a></li>
+                {% endfor %}
+            </ul>
+
+        </div>
+
+    </div> <!-- /container -->
+{% endblock %}

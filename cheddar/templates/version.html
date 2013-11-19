@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container">
+
+        <!-- Main component for a primary marketing message or call to action -->
+        <div class="jumbotron">
+            <h1>{{ project }} {{ version }}</h1>
+            <a href="/local/{{ metadata['_filename']}}" rel="download">download</a>
+            <dl>
+                {% for key, value in metadata|dictsort %}
+                {% if key not in ["name", "version", "_filename"] and value %}
+                <dt>{{ key }}</dt>
+                {% if key == "home_page" %}
+                <dd><a href="{{ value }}" ref="homepage">{{ value }}</a></dd>
+                {% elif value|islist %}
+                <dd>{{ value|join(",") }}</dd>
+                {% else %}
+                <dd>{{ value }}</dd>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </ul>
+
+        </div>
+
+    </div> <!-- /container -->
+{% endblock %}

@@ -1,0 +1,14 @@
+language: python
+python:
+- '2.7'
+- pypy
+install: pip install -r requirements.txt --use-mirrors
+script: python setup.py nosetests
+deploy:
+  provider: pypi
+  user: jessemyers
+  password:
+    secure: Q9fqZxZl34itoo61QptKT7s3t401k4XvYzBvwL3Pdz/2ZB4K6iq8nGiFe1vPmOFf4B/7+wdqymyLmHk+pbuKSVaVMOvbjtlOfdFwL+X+wdgAHt8K+CXYgIbxYZMWgPNQ4HPKtTKv+JAIpM3uCb1MdkBFWM2jYfacmEW4L3d+JaY=
+  on:
+    tags: true
+    repo: jessemyers/cheddar
