@@ -34,7 +34,13 @@ def guess_name_and_version(basename):
     for extension in [".tar.gz", ".zip"]:
         if rest.endswith(extension):
             rest = rest[:- len(extension)]
-    return rest.rsplit("-", 1)
+    name, version = rest.split("-", 1)
+    if version[0].isdigit():
+        # first split left
+        return name, version
+    else:
+        # otherwise split right
+        return rest.rsplit("-", 1)
 
 
 def is_pre_release(basename):
