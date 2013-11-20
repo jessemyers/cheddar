@@ -39,7 +39,9 @@ def test_guess_name_and_version():
 
     cases = [("foo-1.0.tar.gz", "foo", "1.0"),
              ("foo-1.0c1.zip", "foo", "1.0c1"),
-             ("foo-1.0.dev1", "foo", "1.0.dev1")]
+             ("foo-1.0.dev1", "foo", "1.0.dev1"),
+             # hypenated names are a bad idea!
+             ("foo-bar-1.0.tar.gz", "foo-bar", "1.0")]
     for basename, expected_name, expected_version in cases:
         yield validate_guess, basename, expected_name, expected_version
 
