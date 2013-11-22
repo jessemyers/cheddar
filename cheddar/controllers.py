@@ -29,10 +29,10 @@ def create_routes(app):
     @app.route("/")
     def index():
         """
-        Index page.
+        Index page: show recent history.
         """
         app.logger.debug("Showing index page")
-        return _render("index.html")
+        return _render("index.html", history=app.history.all())
 
     @app.route("/simple/")
     @app.route("/simple")
@@ -42,7 +42,11 @@ def create_routes(app):
         """
         app.logger.debug("Showing all projects")
 
-        projects = sorted([project.name for project in app.index.get_projects()])
+        def name_sort_key(name):
+            return name.lower()
+
+        projects = sorted([project.name for project in app.index.get_projects()],
+                          key=name_sort_key)
 
         return _render("simple.html", projects=projects)
 
@@ -60,7 +64,7 @@ def create_routes(app):
             abort(404)
 
         sorted_versions = OrderedDict()
-        for version in sorted(versions.keys(), key=sort_key):
+        for version in sorted(versions.keys(), key=sort_key, reverse=True):
             sorted_versions[version] = versions[version]
 
         return _render("project.html", project=name, versions=sorted_versions)

@@ -16,6 +16,7 @@ from nose.tools import assert_raises, eq_, ok_
 from requests import codes
 
 from cheddar.app import create_app
+from cheddar.index.remote import iter_version_links
 
 
 class TestControllers(object):
@@ -61,7 +62,7 @@ class TestControllers(object):
     def test_index_template_json(self):
         result = self.client.get("/", headers=self.use_json)
         eq_(result.status_code, codes.ok)
-        eq_(loads(result.data), dict())
+        eq_(loads(result.data), dict(history=[]))
 
     def test_get_projects_no_projects_template_render(self):
         result = self.client.get("/simple")
@@ -88,10 +89,10 @@ class TestControllers(object):
         result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        iter_ = self.app.index.remote._iter_version_links(result.data, "http://pypi.python.org/simple")
-        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
-        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        iter_ = iter_version_links(result.data, "foo")
         eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
         with assert_raises(StopIteration):
             iter_.next()
 
@@ -106,7 +107,7 @@ class TestControllers(object):
             result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        iter_ = self.app.index.remote._iter_version_links(result.data, "http://pypi.python.org/simple")
+        iter_ = iter_version_links(result.data, "foo")
         eq_(iter_.next(),
             ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz?base=http%3A%2F%2Fpypi.python.org"))
         with assert_raises(StopIteration):
@@ -186,6 +187,7 @@ class TestControllers(object):
         distribution = join(self.local_cache_dir, "releases", "example-1.0.tar.gz")
         copyfile(join(dirname(__file__), "data/example-1.0.tar.gz"), distribution)
         self.app.projects.add_metadata({"name": "example", "version": "1.0", "_filename": distribution})
+        self.app.history.add("example", "1.0")
 
         eq_(self.app.redis.smembers("cheddar.local"), set(["example"]))
         eq_(self.app.redis.smembers("cheddar.local.example"), set(["1.0"]))
@@ -202,6 +204,7 @@ class TestControllers(object):
         ok_(not self.app.redis.exists("cheddar.local.example"))
         ok_(not self.app.redis.exists("cheddar.local.example-1.0"))
         ok_(not exists(distribution))
+        ok_(not self.app.history)
 
     def test_register_missing_required_parameters(self):
         result = self.client.post("/pypi", data={})
@@ -230,6 +233,7 @@ class TestControllers(object):
                                       data={"file": (file_, "example-1.0.tar.gz")},
                                       headers=self.use_auth)
         eq_(result.status_code, codes.ok)
+        eq_(self.app.history.all(), ["example/1.0"])
 
     @contextmanager
     def _mocked_get(self, url, status_code,):
