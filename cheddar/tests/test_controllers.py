@@ -16,6 +16,7 @@ from nose.tools import assert_raises, eq_, ok_
 from requests import codes
 
 from cheddar.app import create_app
+from cheddar.index.remote import iter_version_links
 
 
 class TestControllers(object):
@@ -88,11 +89,10 @@ class TestControllers(object):
         result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        location = "http://pypi.python.org/simple"
-        iter_ = self.app.index.remote._iter_version_links(result.data, location, "foo")
-        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz", location))
-        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz", location))
-        eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz", location))
+        iter_ = iter_version_links(result.data, "foo")
+        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
         with assert_raises(StopIteration):
             iter_.next()
 
@@ -107,10 +107,9 @@ class TestControllers(object):
             result = self.client.get("/simple/foo")
 
         eq_(result.status_code, codes.ok)
-        location = "http://pypi.python.org/simple"
-        iter_ = self.app.index.remote._iter_version_links(result.data, location, "foo")
+        iter_ = iter_version_links(result.data, "foo")
         eq_(iter_.next(),
-            ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz?base=http%3A%2F%2Fpypi.python.org", location))
+            ("foo-1.0c1.tar.gz", "/remote/packages/foo/foo-1.0c1.tar.gz?base=http%3A%2F%2Fpypi.python.org"))
         with assert_raises(StopIteration):
             iter_.next()
 
