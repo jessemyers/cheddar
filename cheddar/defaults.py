@@ -24,6 +24,9 @@ REMOTE_CACHE_DIR = "/var/tmp/cheddar-{}/remote".format(getuser())
 # Where should we cache local package data?
 LOCAL_CACHE_DIR = "/var/tmp/cheddar-{}/local".format(getuser())
 
+# How much history to keep?
+HISTORY_SIZE = 50
+
 # Logging configuration
 LOGGING = {
     'version': 1,
