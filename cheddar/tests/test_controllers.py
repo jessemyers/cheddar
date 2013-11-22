@@ -89,9 +89,9 @@ class TestControllers(object):
 
         eq_(result.status_code, codes.ok)
         iter_ = self.app.index.remote._iter_version_links(result.data, "http://pypi.python.org/simple")
-        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
-        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
         eq_(iter_.next(), ("foo-1.1.tar.gz", "/local/foo-1.1.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.tar.gz", "/local/foo-1.0.tar.gz"))
+        eq_(iter_.next(), ("foo-1.0.dev1.tar.gz", "/local/foo-1.0.dev1.tar.gz"))
         with assert_raises(StopIteration):
             iter_.next()
 
