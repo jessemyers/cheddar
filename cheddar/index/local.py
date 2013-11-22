@@ -2,6 +2,7 @@
 Implements a local package index.
 """
 from os.path import basename
+from time import time
 
 from flask import abort
 from requests import codes
@@ -22,6 +23,7 @@ class LocalIndex(Index):
         self.storage = app.local_storage
         self.logger = app.logger
         self.projects = app.projects
+        self.history = app.history
 
     def get_projects(self):
         self.logger.info("Getting local projects")
@@ -81,6 +83,7 @@ class LocalIndex(Index):
 
         self.storage.remove(metadata[Version.FILENAME])
         self.projects.remove_metadata(name, version)
+        self.history.remove(name, version)
 
     def validate_metadata(self, metadata):
         """
@@ -116,6 +119,7 @@ class LocalIndex(Index):
             self.storage.remove(filename)
             raise
         else:
+            self.history.add(metadata["name"], metadata["version"])
             self.projects.add_metadata(metadata)
 
     def rebuild(self):
@@ -150,5 +154,7 @@ class LocalIndex(Index):
 
         # include local path in metadata
         metadata[Version.FILENAME] = filename
+        # add upload timestamp
+        metadata["_uploaded_timestamp"] = time()
 
         return metadata

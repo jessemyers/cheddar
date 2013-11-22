@@ -2,12 +2,14 @@
 Configure the Flask application.
 """
 from logging.config import dictConfig
+from time import ctime
 
 from flask import request
 from redis import Redis
 
 from cheddar import defaults
 from cheddar.controllers import create_routes
+from cheddar.history import History
 from cheddar.index.combined import CombinedIndex
 from cheddar.index.storage import DistributionStorage
 from cheddar.model.distribution import Projects
@@ -30,6 +32,7 @@ def configure_app(app, debug=False, testing=False):
     app.projects = Projects(app.redis, app.logger)
     app.local_storage = DistributionStorage(app.config["LOCAL_CACHE_DIR"], app.logger)
     app.remote_storage = DistributionStorage(app.config["REMOTE_CACHE_DIR"], app.logger)
+    app.history = History(app)
     app.index = CombinedIndex(app)
 
     if app.config.get('FORCE_READ_REQUESTS'):
@@ -72,4 +75,8 @@ def _configure_jinja(app):
     def islist(obj):
         return isinstance(obj, list)
 
+    def localtime(timestamp):
+        return ctime(timestamp)
+
     app.jinja_env.filters.update({"islist": islist})
+    app.jinja_env.filters.update({"localtime": localtime})
