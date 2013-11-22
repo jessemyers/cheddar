@@ -9,7 +9,7 @@ from urlparse import urlsplit, urlunsplit
 from BeautifulSoup import BeautifulSoup
 from flask import abort
 from requests import codes, get
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound
 
 from cheddar.index.index import Index
 from cheddar.model.versions import guess_name_and_version
@@ -19,6 +19,9 @@ class RemoteIndex(Index):
     """
     Access package data through a remote index server (e.g. pypi.python.org)
     """
+
+    MAX_DEPTH = 2
+
     def __init__(self, app):
         self.index_url = app.config["INDEX_URL"]
         self.get_timeout = app.config["GET_TIMEOUT"]
@@ -34,9 +37,37 @@ class RemoteIndex(Index):
         """
         Request version data from remote index and parse HTML.
         """
+        url = "{}/{}".format(self.index_url, name)
+
+        def build_remote_path(href, location):
+            """
+            Embed the index location into the link. If there was an #md5= fragment, it must
+            come after the query string, so a little bit of gymnastics happens here.
+            """
+            if has_scheme(href):
+                path = get_absolute_path(href, "")
+                base_url = get_base_url(href)
+            else:
+                path = get_absolute_path(location, href)
+                base_url = get_base_url(location)
+
+            if "#" in path:
+                base, fragment = path.split("#", 1)
+                return "/remote{}?base={}#{}".format(base, quote(base_url, ""), fragment)
+            else:
+                return "/remote{}?base={}".format(path, quote(base_url, ""))
+
+        versions = {name: build_remote_path(href, location) for name, href, location in self._iter_listings(url, name)}
+
+        self.logger.debug("Obtained remote version listing for: {}: {}".format(name, versions))
+        return versions
+
+    def _iter_listings(self, url, name, depth=0):
+        """
+        Iterate through remote listings as name, href, location tuples.
+        """
         self.logger.info("Getting remote version listing for: {}".format(name))
 
-        url = "{}/{}".format(self.index_url, name)
         response = get(url, timeout=self.get_timeout)
         if response.status_code != codes.ok:
             self.logger.info("Remote version listing not found: {}".format(response.status_code))
@@ -46,22 +77,8 @@ class RemoteIndex(Index):
         location = get_request_location(response, url)
         self.logger.debug("Index location was: {}".format(location))
 
-        def build_remote_path(path, location):
-            """
-            Embed the index location into the link. If there was an #md5= fragment, it must
-            come after the query string, so a little bit of gymnastics happens here.
-            """
-            if "#" in path:
-                base, fragment = path.split("#", 1)
-                return "/remote{}?base={}#{}".format(base, quote(get_base_url(location), ""), fragment)
-            else:
-                return "/remote{}?base={}".format(path, quote(get_base_url(location), ""))
-
-        versions = {name: build_remote_path(path, location)
-                    for name, path in self._iter_version_links(response.text, location)}
-
-        self.logger.debug("Obtained remote version listing for: {}: {}".format(name, versions))
-        return versions
+        for listing in self._iter_version_links(response.text, location, name, depth):
+            yield listing
 
     def get_metadata(self, name, version):
         """
@@ -101,7 +118,7 @@ class RemoteIndex(Index):
         """
         raise NotImplementedError("upload_distribution")
 
-    def _iter_version_links(self, html, location):
+    def _iter_version_links(self, html, location, name, depth=0):
         """
         Iterate through version links (in order), filtering out links that
         don't "look" like versions.
@@ -109,11 +126,20 @@ class RemoteIndex(Index):
         soup = BeautifulSoup(html)
         for node in soup.findAll("a"):
             try:
-                name, version = guess_name_and_version(node.text)
+                guessed_name, guessed_version = guess_name_and_version(node.text)
             except ValueError:
-                # couldn't parse name and version, probably the wrong kind of link
-                continue
-            yield node.text, get_absolute_path(location, node["href"])
+                if depth <= RemoteIndex.MAX_DEPTH and node.get("rel") == "download":
+                    # Might be a recursive link.
+                    try:
+                        for listing in self._iter_listings(node["href"], name, depth + 1):
+                            yield listing
+                    except NotFound:
+                        pass
+                # else couldn't parse name and version, probably the wrong kind of link
+            else:
+                if guessed_name != name:
+                    continue
+                yield node.text, node["href"], location
 
 
 class CachedRemoteIndex(RemoteIndex):
@@ -218,3 +244,11 @@ def get_request_location(response, url):
 
     # reconstruct the url (minus query string and fragments)
     return urlunsplit([scheme, netloc, path] + [""] * 2)
+
+
+def has_scheme(url):
+    try:
+        url_parts = urlsplit(url)
+        return bool(url_parts.scheme)
+    except:
+        return False

@@ -31,9 +31,17 @@ def guess_name_and_version(basename):
     Guess the distribution's name and version from its filename.
     """
     rest = basename
+
+    for bad_extension in [".exe"]:
+        if rest.endswith(bad_extension):
+            # bad extension
+            raise ValueError("Expected basename to have a valid package extension.")
+
     for extension in [".tar.gz", ".zip"]:
         if rest.endswith(extension):
             rest = rest[:- len(extension)]
+            break
+
     name, version = rest.split("-", 1)
     if version[0].isdigit():
         # first split left
