@@ -2,27 +2,38 @@
 
 {% block content %}
     <div class="container">
+      <div class="jumbotron">
 
-        <!-- Main component for a primary marketing message or call to action -->
-        <div class="jumbotron">
-            <h1>{{ project }} {{ version }}</h1>
-            <a href="/local/{{ metadata['_filename']}}" rel="download">download</a>
+        <ul class="nav nav-pills">
+          <li class="active"><a href="#">{{ project }} {{version}}</a></li>
+          <li><a href="/local/{{ metadata['_filename']}}" rel="download">download</a></li>
+          <li><a href="/simple/{{ project }}">versions</a></li>
+        </ul>
             <dl>
                 {% for key, value in metadata|dictsort %}
                 {% if key not in ["name", "version", "_filename"] and value %}
+
+                {% if key == "_uploaded_timestamp" %}
+                <dt>uploaded</dt>
+                {% else %}
                 <dt>{{ key }}</dt>
+                {% endif %}
+
                 {% if key == "home_page" %}
                 <dd><a href="{{ value }}" ref="homepage">{{ value }}</a></dd>
+                {% elif key == "_uploaded_timestamp" %}
+                <dd>{{ value|localtime }}</dd>
                 {% elif value|islist %}
                 <dd>{{ value|join(",") }}</dd>
                 {% else %}
                 <dd>{{ value }}</dd>
                 {% endif %}
+
                 {% endif %}
                 {% endfor %}
-            </ul>
+            </dl>
 
         </div>
 
-    </div> <!-- /container -->
+    </div>
 {% endblock %}
