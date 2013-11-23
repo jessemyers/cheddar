@@ -140,12 +140,14 @@ def test_iter_version_links():
           <a href="../../packages/foo-1.0.tar.gz"/>foo-1.0.tar.gz</a>
           <a href="../../packages/bar-1.0.tar.gz"/>bar-1.0.tar.gz</a>
           <a href="http://foo.com/foo" rel="download"/>foo download link</a>
+          <a href="http://foo.com/files/foo-0.1.0.zip" rel="download">0.1.0 download_url</a><br/>
           </body>
         </html>""")
 
     iter_ = iter_version_links(HTML, "foo")
     eq_(next(iter_), ("foo-1.0.tar.gz", "../../packages/foo-1.0.tar.gz"))
     eq_(next(iter_), "http://foo.com/foo")
+    eq_(next(iter_), ("foo-0.1.0.zip", "http://foo.com/files/foo-0.1.0.zip"))
 
     with assert_raises(StopIteration):
         next(iter_)
