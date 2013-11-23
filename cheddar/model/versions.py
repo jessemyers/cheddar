@@ -57,6 +57,11 @@ def is_pre_release(basename):
     """
     parsed_version = sort_key(basename)
 
+    # check for patch levels (these are explicitly not pre-release)
+    # see: http://pythonhosted.org/setuptools/pkg_resources.html#parsing-utilities
+    if "*final-" in parsed_version:
+        return False
+
     # check if the parsed version contains a non-numeric component
     #
     # 1.0.dev1 -> ('00000001', '00000000', '*@', '00000001', '*final')
