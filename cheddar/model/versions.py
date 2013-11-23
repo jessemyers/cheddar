@@ -51,16 +51,35 @@ def guess_name_and_version(basename):
         return rest.rsplit("-", 1)
 
 
+def name_match(this, that):
+    """
+    Do two package names match?
+    """
+    def _normalize(name):
+        return name.replace("_", "-").lower()
+
+    return _normalize(this) == _normalize(that)
+
+
 def is_pre_release(basename):
     """
     Determine whether the version is a pre-release.
+
+    The existence of "patch levels" and other exotic versions make version analysis trick.
+    PEP386's version improvements are also impractical because PyPi has to deal with actual
+    versions seen in the wild...
+
+    See: http://pythonhosted.org/setuptools/pkg_resources.html#parsing-utilities
     """
     parsed_version = sort_key(basename)
 
-    # check for patch levels (these are explicitly not pre-release)
-    # see: http://pythonhosted.org/setuptools/pkg_resources.html#parsing-utilities
-    if "*final-" in parsed_version:
-        return False
+    def is_patch(part):
+        # the tailing "-" is important here
+        return part == "*final-"
+
+    # strip out patch levels indicator and their successive qualifier
+    parts = [part for index, part in enumerate(parsed_version)
+             if not is_patch(part) and (index == 0 or not is_patch(parsed_version[index - 1]))]
 
     # check if the parsed version contains a non-numeric component
     #
@@ -69,7 +88,7 @@ def is_pre_release(basename):
     # 1.0      -> ('00000001', '00000000', '*final')
     # 1.0.1    -> ('00000001', '00000000', '00000001', '*final')
     try:
-        [int(part) for part in parsed_version if part != "*final"]
+        [int(part) for part in parts if part != "*final"]
         return False
     except ValueError:
         return True

@@ -7,6 +7,7 @@ from nose.tools import eq_
 
 from cheddar.model.versions import (guess_name_and_version,
                                     is_pre_release,
+                                    name_match,
                                     read_metadata,
                                     sort_key)
 
@@ -60,6 +61,20 @@ def test_sort_key():
         list(reversed(versions)))
 
 
+def test_name_match():
+
+    def validate_name_match(this, that, expected):
+        eq_(name_match(this, that), expected)
+
+    cases = [("foo", "Foo", True),
+             ("foo", "bar", False),
+             ("foo-bar", "foo_bar", True),
+             ("foo-bar", "foobar", False),
+             ]
+    for this, that, expected in cases:
+        yield validate_name_match, this, that, expected
+
+
 def test_is_pre_release():
 
     def validate_is_pre_release(basename, expected):
@@ -68,7 +83,13 @@ def test_is_pre_release():
     cases = [("foo-1.1", False),
              ("foo-1.0.1", False),
              ("foo-1.0", False),
+             ("foo-1.0a", True),
+             ("foo-1.0b", True),
+             ("foo-1.0c", True),
              ("foo-1.0c1", True),
+             ("foo-1.0pre", True),
+             ("foo-1.0preview", True),
+             ("foo-1.0rc", True),
              ("foo-1.0.dev10", True),
              ("foo-1.0.dev9", True),
              ("foo-1.0-alpha", True),
@@ -77,6 +98,7 @@ def test_is_pre_release():
              ("foo-1.0-rc1", True),
              ("foo-1.0-dev", True),
              ("foo-1.0-xx", False),
+             ("foo-1.0-xx.dev1", True),
              ("foo-1.0-1", False)]
     for basename, expected in cases:
         yield validate_is_pre_release, basename, expected
