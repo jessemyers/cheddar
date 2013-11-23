@@ -271,6 +271,6 @@ def iter_version_links(html, name):
                 yield node["href"]
             # else couldn't parse name and version, probably the wrong kind of link
         else:
-            if guessed_name != name:
+            if guessed_name.lower() != name.lower():
                 continue
             yield node.text, node["href"]
