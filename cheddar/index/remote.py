@@ -2,7 +2,7 @@
 Implements a remote (proxy) package index.
 """
 from json import dumps, loads
-from os.path import abspath, join
+from os.path import abspath, basename, join
 from urllib import quote
 from urlparse import urlsplit, urlunsplit
 
@@ -266,9 +266,15 @@ def iter_version_links(html, name):
         try:
             guessed_name, _ = guess_name_and_version(node.text)
         except ValueError:
-            if node.get("rel") == "download":
-                # Might be a recursive link.
-                yield node["href"]
+            href = node["href"]
+            for extension in [".tar.gz", ".zip"]:
+                if href.endswith(extension):
+                    yield basename(href), href
+                    break
+            else:
+                if node.get("rel") == "download":
+                    # Might be a recursive link.
+                    yield href
             # else couldn't parse name and version, probably the wrong kind of link
         else:
             if guessed_name.lower() != name.lower():
