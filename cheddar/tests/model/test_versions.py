@@ -70,6 +70,13 @@ def test_is_pre_release():
              ("foo-1.0", False),
              ("foo-1.0c1", True),
              ("foo-1.0.dev10", True),
-             ("foo-1.0.dev9", True)]
+             ("foo-1.0.dev9", True),
+             ("foo-1.0-alpha", True),
+             ("foo-1.0-beta", True),
+             ("foo-1.0-c", True),
+             ("foo-1.0-rc1", True),
+             ("foo-1.0-dev", True),
+             ("foo-1.0-xx", False),
+             ("foo-1.0-1", False)]
     for basename, expected in cases:
         yield validate_is_pre_release, basename, expected
