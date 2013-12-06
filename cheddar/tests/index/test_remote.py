@@ -137,6 +137,7 @@ def test_iter_version_links():
     HTML = dedent("""\
         <html>
           <body>
+          <a/>
           <a href="../../packages/foo-1.0.tar.gz"/>foo-1.0.tar.gz</a>
           <a href="../../packages/bar-1.0.tar.gz"/>bar-1.0.tar.gz</a>
           <a href="http://foo.com/foo" rel="download"/>foo download link</a>
