@@ -123,7 +123,8 @@ class CachedRemoteIndex(RemoteIndex):
         super(CachedRemoteIndex, self).__init__(app)
         self.redis = app.redis
         self.storage = app.remote_storage
-        self.versions_ttl = app.config["VERSIONS_TTL"]
+        self.versions_short_ttl = app.config["VERSIONS_SHORT_TTL"]
+        self.versions_long_ttl = app.config["VERSIONS_LONG_TTL"]
         self.logger = app.logger
 
     def get_versions(self, name):
@@ -148,13 +149,13 @@ class CachedRemoteIndex(RemoteIndex):
             if error.code == codes.not_found:
                 # Cache negative
                 self.logger.debug("Caching negative versions listing for: {}".format(name))
-                self.redis.setex(key, time=int(self.versions_ttl), value=dumps({}))
+                self.redis.setex(key, time=int(self.versions_long_ttl), value=dumps({}))
             else:
                 self.logger.warn("Unexpected error querying remote versions listing", exc_info=True)
             raise
         else:
             self.logger.debug("Caching positive versions listing for: {}".format(name))
-            self.redis.setex(key, time=int(self.versions_ttl), value=dumps(computed_versions))
+            self.redis.setex(key, time=int(self.versions_long_ttl), value=dumps(computed_versions))
 
         self.logger.debug(computed_versions)
         return computed_versions
