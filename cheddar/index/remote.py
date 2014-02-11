@@ -7,7 +7,7 @@ from urllib import quote
 from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
-from requests import codes, get
+from requests import codes, ConnectionError, get, Timeout
 from werkzeug.exceptions import HTTPException, NotFound
 
 from cheddar.exceptions import NotFoundError
@@ -56,10 +56,7 @@ class RemoteIndex(Index):
         """
         self.logger.info("Getting remote distribution: {}".format(location))
 
-        response = get(location, timeout=self.get_timeout)
-        if response.status_code != codes.ok:
-            self.logger.info("Distribution not found for: {}: {}".format(location, response.status_code))
-            raise NotFoundError()
+        response = fetch_url(location, self.get_timeout, self.logger)
 
         # don't log binary distribution content (.tar.gz, .zip, etc.), even at debug
         return response.content, response.headers["Content-Type"]
@@ -91,10 +88,7 @@ class RemoteIndex(Index):
         """
         self.logger.info("Getting remote version listing for: {}".format(name))
 
-        response = get(url, timeout=self.get_timeout)  # XXX except Timeout/ConnnectionError
-        if response.status_code != codes.ok:
-            self.logger.info("Remote version listing not found: {}".format(response.status_code))
-            raise NotFoundError()
+        response = fetch_url(url, self.get_timeout, self.logger)
 
         # Record the actual hostname used in case of redirection
         location = get_request_location(response, url)
@@ -282,3 +276,25 @@ def iter_version_links(html, name):
             if guessed_name.replace("_", "-").lower() != name.replace("_", "-").lower():
                 continue
             yield node.text, node["href"]
+
+
+def fetch_url(url, timeout, logger):
+    """
+    Get a URL, handling timeouts and connection errors.
+
+    :raises: NotFoundError: if get fails to return 200
+    """
+    try:
+        response = get(url, timeout=timeout)
+    except Timeout:
+        logger.info("Timed out getting url: {}".format(url))
+        raise NotFoundError()
+    except ConnectionError:
+        logger.info("Unable to connect to url: {}".format(url))
+        raise NotFoundError()
+
+    if response.status_code != codes.ok:
+        logger.info("Unexpected status code: {} getting url: {}".format(response.status_code, url))
+        raise NotFoundError()
+
+    return response

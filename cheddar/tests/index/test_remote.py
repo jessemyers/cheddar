@@ -1,16 +1,23 @@
 """
 Test remote index.
 """
+from logging import getLogger
 from textwrap import dedent
 
-from mock import MagicMock
+from mock import patch, MagicMock
 from nose.tools import assert_raises, eq_
+from requests import codes, ConnectionError, Timeout
 
+from cheddar.exceptions import NotFoundError
 from cheddar.index.remote import (build_remote_path,
+                                  fetch_url,
                                   get_absolute_path,
                                   get_base_url,
                                   get_request_location,
                                   iter_version_links)
+
+
+TIMEOUT = 10
 
 
 def test_get_absolute_path():
@@ -27,6 +34,48 @@ def test_get_base_url():
     """
     eq_(get_base_url("http://foo.com/bar/baz"), "http://foo.com")
     eq_(get_base_url("https://foo.com:443/foo/bar"), "https://foo.com:443")
+
+
+def test_fetch_url_ok():
+    """
+    200 status codes succeed.
+    """
+    with patch("cheddar.index.remote.get") as mocked:
+        mocked.return_value = MagicMock()
+        mocked.return_value.status_code = codes.ok
+        response = fetch_url("http://example.com", TIMEOUT, getLogger())
+        eq_(codes.ok, response.status_code)
+
+
+def test_fetch_url_not_ok():
+    """
+    Non-200 status codes are treated as NotFoundErrors.
+    """
+    with patch("cheddar.index.remote.get") as mocked:
+        mocked.return_value = MagicMock()
+        mocked.return_value.status_code = codes.bad_request
+        with assert_raises(NotFoundError):
+            fetch_url("http://example.com", TIMEOUT, getLogger())
+
+
+def test_fetch_url_timeout():
+    """
+    Timeouts are treated as NotFoundErrors.
+    """
+    with patch("cheddar.index.remote.get") as mocked:
+        mocked.side_effect = Timeout
+        with assert_raises(NotFoundError):
+            fetch_url("http://example.com", TIMEOUT, getLogger())
+
+
+def test_fetch_url_connection_error():
+    """
+    Connection errors are treated as NotFoundErrors.
+    """
+    with patch("cheddar.index.remote.get") as mocked:
+        mocked.side_effect = ConnectionError
+        with assert_raises(NotFoundError):
+            fetch_url("http://example.com", TIMEOUT, getLogger())
 
 
 def test_get_request_location_no_history_no_headers():
