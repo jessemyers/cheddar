@@ -7,10 +7,10 @@ from urllib import quote
 from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
-from flask import abort
 from requests import codes, get
 from werkzeug.exceptions import HTTPException, NotFound
 
+from cheddar.exceptions import NotFoundError
 from cheddar.index.index import Index
 from cheddar.model.versions import guess_name_and_version
 
@@ -59,7 +59,7 @@ class RemoteIndex(Index):
         response = get(location, timeout=self.get_timeout)
         if response.status_code != codes.ok:
             self.logger.info("Distribution not found for: {}: {}".format(location, response.status_code))
-            abort(codes.not_found)
+            raise NotFoundError()
 
         # don't log binary distribution content (.tar.gz, .zip, etc.), even at debug
         return response.content, response.headers["Content-Type"]
@@ -91,10 +91,10 @@ class RemoteIndex(Index):
         """
         self.logger.info("Getting remote version listing for: {}".format(name))
 
-        response = get(url, timeout=self.get_timeout)
+        response = get(url, timeout=self.get_timeout)  # XXX except Timeout/ConnnectionError
         if response.status_code != codes.ok:
             self.logger.info("Remote version listing not found: {}".format(response.status_code))
-            abort(codes.not_found)
+            raise NotFoundError()
 
         # Record the actual hostname used in case of redirection
         location = get_request_location(response, url)

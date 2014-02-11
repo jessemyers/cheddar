@@ -5,9 +5,10 @@ from collections import OrderedDict
 from functools import wraps
 from urlparse import urljoin
 
-from flask import abort, jsonify, make_response, render_template, request
+from flask import jsonify, make_response, render_template, request
 
 from cheddar.auth import check_authentication
+from cheddar.exceptions import BadRequestError, NotFoundError
 from cheddar.model.versions import sort_key
 
 
@@ -61,7 +62,7 @@ def create_routes(app):
         versions = app.index.get_versions(name)
 
         if not versions:
-            abort(404)
+            raise NotFoundError()
 
         sorted_versions = OrderedDict()
         for version in sorted(versions.keys(), key=sort_key, reverse=True):
@@ -86,7 +87,7 @@ def create_routes(app):
         metadata = app.index.get_metadata(name, version)
 
         if metadata is None:
-            abort(404)
+            raise NotFoundError()
 
         return _render("version.html", project=name, version=version, metadata=metadata)
 
@@ -169,7 +170,7 @@ def create_routes(app):
 
         metadata = {key: values[0] for key, values in request.form.iterlists()}
         if not app.index.validate_metadata(metadata):
-            abort(400)
+            raise BadRequestError()
 
         return ""
 
