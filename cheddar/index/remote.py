@@ -8,7 +8,6 @@ from urlparse import urlsplit, urlunsplit
 
 from BeautifulSoup import BeautifulSoup
 from requests import codes, ConnectionError, get, Timeout
-from werkzeug.exceptions import HTTPException, NotFound
 
 from cheddar.exceptions import NotFoundError
 from cheddar.index.index import Index
@@ -39,7 +38,8 @@ class RemoteIndex(Index):
         """
         url = "{}/{}".format(self.index_url, name)
 
-        versions = {name: build_remote_path(href, location) for name, href, location in self._iter_listings(url, name)}
+        versions = {name: build_remote_path(href, location)
+                    for name, href, location in self._iter_listings(url, name)}
 
         self.logger.debug("Obtained remote version listing for: {}: {}".format(name, versions))
         return versions
@@ -106,10 +106,10 @@ class RemoteIndex(Index):
                         self.logger.info("Spidering to: {}".format(link))
                         for listing in self._iter_listings(link, name, depth + 1):
                             yield listing
-                    except NotFound:
+                    except NotFoundError:
                         self.logger.debug("Unable to spider to: {}".format(link))
                 else:
-                    self.logger.info("Reached maximum depth; aborted spidering to: {}".format(link))
+                    self.logger.info("Reached max depth; aborted spidering to: {}".format(link))
 
 
 class CachedRemoteIndex(RemoteIndex):
@@ -127,6 +127,55 @@ class CachedRemoteIndex(RemoteIndex):
         self.versions_long_ttl = app.config["VERSIONS_LONG_TTL"]
         self.logger = app.logger
 
+    def _key(self, name):
+        return "cheddar.remote.{}".format(name)
+
+    def _is_expired(self, ttl):
+        """
+        Is a cached index with a given ttl expired?
+        """
+        if ttl == -1:
+            # no expiration
+            return False
+        if ttl == -2:
+            # no key; let's call that "not expired"
+            return False
+        age = max(0, self.versions_long_ttl - ttl)
+        return age >= self.versions_short_ttl
+
+    def _get_cached_index(self, name):
+        """
+        Get the cached values of a distribution.
+
+        :returns: a tuple of the cached value and whether it was expired
+        """
+        versions = self.redis.get(self._key(name))
+        if versions is None:
+            # not cached
+            self.logger.debug("Cached index for: {} was not found".format(name))
+            return None, False
+
+        ttl = self.redis.ttl(self._key(name))
+        self.logger.debug("Cached index for: {} has a ttl of: {}".format(name, ttl))
+        expired = self._is_expired(ttl)
+        self.logger.debug("Cached index for: {} was expired: {}".format(name, expired))
+
+        return loads(versions), expired
+
+    def _save_negative_index(self, name):
+        """
+        Save a negative result in the cache.
+
+        Caching a negative result ensures that we don't keep querying the remote
+        index for something that truly does not exist.
+        """
+        self.logger.debug("Caching negative versions listing for: {}".format(name))
+        self.redis.setex(self._key(name), time=int(self.versions_long_ttl), value=dumps({}))
+
+    def _save_index(self, name, versions):
+        self.logger.debug("Caching positive versions listing for: {}".format(name))
+        self.redis.setex(self._key(name), time=int(self.versions_long_ttl), value=dumps(versions))
+
     def get_versions(self, name):
         """
         Adds redis caching to versions listing.
@@ -134,31 +183,36 @@ class CachedRemoteIndex(RemoteIndex):
         Currently, does not implement negative caching.
         """
         self.logger.info("Checking for cached versions listing for: {}".format(name))
-        key = "cheddar.remote.{}".format(name)
 
-        # Check cache
-        cached_versions = self.redis.get(key)
+        # check cache
+        cached_versions, cached_expired = self._get_cached_index(name)
 
-        if cached_versions is not None:
+        # is it cached and recent enough?
+        if cached_versions is not None and not cached_expired:
+            # yes, return it
             self.logger.debug("Found cached versions listing for: {}".format(name))
-            return loads(cached_versions)
+            return cached_versions
 
+        # need to refresh
         try:
             computed_versions = super(CachedRemoteIndex, self).get_versions(name)
-        except HTTPException as error:
-            if error.code == codes.not_found:
-                # Cache negative
-                self.logger.debug("Caching negative versions listing for: {}".format(name))
-                self.redis.setex(key, time=int(self.versions_long_ttl), value=dumps({}))
+        except NotFoundError as error:
+            if error.status_code == codes.not_found:
+                # no value
+                self._save_negative_index(name)
+                raise
+            elif cached_versions is None:
+                # no cached value
+                raise
             else:
-                self.logger.warn("Unexpected error querying remote versions listing", exc_info=True)
-            raise
+                # fall back to cached value
+                self.logger.debug("Returning expired cached versions: {}".format(cached_versions))
+                return cached_versions
         else:
-            self.logger.debug("Caching positive versions listing for: {}".format(name))
-            self.redis.setex(key, time=int(self.versions_long_ttl), value=dumps(computed_versions))
-
-        self.logger.debug(computed_versions)
-        return computed_versions
+            # found
+            self._save_index(name, computed_versions)
+            self.logger.debug("Returning new versions: {}".format(computed_versions))
+            return computed_versions
 
     def get_distribution(self, location, **kwargs):
         """
@@ -169,7 +223,8 @@ class CachedRemoteIndex(RemoteIndex):
             self.logger.debug("Found cached distribution for: {}".format(location))
             return cached
 
-        content_data, content_type = super(CachedRemoteIndex, self).get_distribution(location, **kwargs)
+        content_data, content_type = super(CachedRemoteIndex, self).get_distribution(location,
+                                                                                     **kwargs)
 
         self.logger.debug("Caching distribution for: {}".format(location))
         self.storage.write(location, content_data)
@@ -296,6 +351,6 @@ def fetch_url(url, timeout, logger):
 
     if response.status_code != codes.ok:
         logger.info("Unexpected status code: {} getting url: {}".format(response.status_code, url))
-        raise NotFoundError()
+        raise NotFoundError(response.status_code)
 
     return response

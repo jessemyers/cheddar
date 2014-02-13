@@ -12,5 +12,7 @@ class ConflictError(Exception):
 
 
 class NotFoundError(Exception):
-    pass
+
+    def __init__(self, status_code=None):
+        self.status_code = status_code
 
