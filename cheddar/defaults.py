@@ -12,7 +12,10 @@ INDEX_URL = "http://pypi.python.org/simple"
 REDIS_HOSTNAME = 'localhost'
 
 # How many seconds should we cache version content?
-VERSIONS_TTL = 600
+VERSIONS_LONG_TTL = 3 * 24 * 60 * 60
+
+# How many seconds should we wait to requery version content?
+VERSIONS_SHORT_TTL = 10 * 60
 
 # How long should we wait for remote HTTP requests to complete?
 # Note that "pip install" has a default timeout of 15 seconds...

@@ -9,6 +9,7 @@ from redis import Redis
 
 from cheddar import defaults
 from cheddar.controllers import create_routes
+from cheddar.errorhandlers import create_errorhandlers
 from cheddar.history import History
 from cheddar.index.combined import CombinedIndex
 from cheddar.index.storage import DistributionStorage
@@ -43,6 +44,7 @@ def configure_app(app, debug=False, testing=False):
             return response
 
     create_routes(app)
+    create_errorhandlers(app)
 
 
 def _configure_from_defaults(app):

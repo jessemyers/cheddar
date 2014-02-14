@@ -7,42 +7,26 @@ from json import loads
 from os import environ
 from os.path import dirname, exists, join
 from shutil import copyfile, rmtree
-from tempfile import mkdtemp
 from textwrap import dedent
 
 from mock import patch
-from mockredis import MockRedis
 from nose.tools import assert_raises, eq_, ok_
 from requests import codes
 
-from cheddar.app import create_app
 from cheddar.index.remote import iter_version_links
+from cheddar.tests.fixtures import setup
 
 
 class TestControllers(object):
 
     def setup(self):
-        self.config_dir = mkdtemp()
-        self.config_file = join(self.config_dir, "cheddar.conf")
-        self.local_cache_dir = mkdtemp()
-        self.remote_cache_dir = mkdtemp()
+        setup(self)
         self.username = "username"
         self.password = "password"
-
-        with open(self.config_file, "w") as file_:
-            file_.write('LOCAL_CACHE_DIR = "{}"\n'.format(self.local_cache_dir))
-            file_.write('REMOTE_CACHE_DIR = "{}"\n'.format(self.remote_cache_dir))
-
-        self.previous_config_file = environ.get("CHEDDAR_SETTINGS")
-        environ["CHEDDAR_SETTINGS"] = self.config_file
-
-        with patch('cheddar.configure.Redis', MockRedis):
-            self.app = create_app(testing=True)
-
         self.client = self.app.test_client()
         self.use_json = dict(accept="application/json; charset=UTF-8")
-        self.use_auth = dict(authorization="Basic {}".format(b64encode("{}:{}".format(self.username,
-                                                                                      self.password))))
+        auth = b64encode("{}:{}".format(self.username, self.password))
+        self.use_auth = dict(authorization="Basic {}".format(auth))
         self.app.redis.set("cheddar.user.{}".format(self.username), self.password)
 
     def teardown(self):
