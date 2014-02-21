@@ -3,6 +3,11 @@
 History
 -------
 
+1.2 (2014-02-21)
+++++++++++++++++++
+
+* Allow remote index to work offline if cached.
+
 1.1 (2013-11-22)
 ++++++++++++++++++
 
