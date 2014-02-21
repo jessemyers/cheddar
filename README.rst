@@ -78,11 +78,11 @@ To use the local index:
         username:myusername
         password:mypassword
 
-    Note that the URL here assume you are running the "development" server.
+    Note that the URL here assumes you are running the "development" server.
 
  2. Add credentials to Redis::
  
-        redis-cli set cheddar.user.myusername mypasswod
+        redis-cli set cheddar.user.myusername mypassword
         
  3. Upload your distribution::
  
@@ -99,7 +99,7 @@ Run `pip` using a custom index url::
 
     pip install --index-url http://localhost:5000/simple
     
-Note that the URL here assume you are running the "development" server.
+Note that the URL here assumes you are running the "development" server.
 
 You can also edit your ``~/.pip/pip.conf`` to contain the index url automatically::
 

@@ -4,10 +4,9 @@ Implements a local package index.
 from os.path import basename
 from time import time
 
-from flask import abort
-from requests import codes
 from werkzeug import secure_filename
 
+from cheddar.exceptions import BadRequestError, ConflictError, NotFoundError
 from cheddar.index.index import Index
 from cheddar.model.distribution import Version
 from cheddar.model.versions import (guess_name_and_version,
@@ -65,7 +64,7 @@ class LocalIndex(Index):
         result = self.storage.read(location)
         if result is None:
             self.logger.info("Distribution not found for: {}".format(location))
-            abort(codes.not_found)
+            raise NotFoundError()
 
         # don't log binary version content (.tar.gz, .zip, etc.), even at debug
         return result
@@ -79,7 +78,7 @@ class LocalIndex(Index):
         metadata = self.projects.get_metadata(name, version)
         if metadata is None:
             self.logger.info("Version not found: {} {}".format(name, version))
-            abort(codes.not_found)
+            raise NotFoundError()
 
         self.storage.remove(metadata[Version.FILENAME])
         self.projects.remove_metadata(name, version)
@@ -105,7 +104,7 @@ class LocalIndex(Index):
 
         if self.storage.exists(filename):
             self.logger.warn("Aborting upload of: {}; already exists".format(filename))
-            abort(codes.conflict)
+            raise ConflictError()
 
         # write to storage first because read_metadata needs a file path
         path = self.storage.write(filename, upload_file.read())
@@ -140,17 +139,17 @@ class LocalIndex(Index):
 
         # make sure metadata validates
         if not self.validate_metadata(metadata):
-            abort(codes.bad_request)
+            raise BadRequestError()
 
         # make sure nothing fishy is going on
         if metadata.get(Version.FILENAME) not in [None, filename]:
-            abort(codes.bad_request)
+            raise BadRequestError()
 
         # make sure metadata is consistent with filename
         expected_name, expected_version = guess_name_and_version(filename)
         if metadata["name"] != expected_name or metadata["version"] != expected_version:
             self.logger.warn("Aborting upload of: {}; conflicting filename and metadata".format(filename))
-            abort(codes.bad_request)
+            raise BadRequestError()
 
         # include local path in metadata
         metadata[Version.FILENAME] = filename
