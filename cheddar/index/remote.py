@@ -315,8 +315,6 @@ def iter_version_links(html, name):
     for node in soup.findAll("a"):
         if node.get("href") is None:
             continue
-        if "-" not in node.text:
-            continue
         try:
             guessed_name, _ = guess_name_and_version(node.text)
         except ValueError:

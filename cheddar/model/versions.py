@@ -22,7 +22,10 @@ def sort_key(basename):
     Define a sort key suitable for use in `sorted`
     that leverages the parsed version.
     """
-    _, version = guess_name_and_version(basename)
+    try:
+        _, version = guess_name_and_version(basename)
+    except ValueError:
+        version = basename
     return parse_version(version)
 
 
