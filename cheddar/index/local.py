@@ -4,7 +4,7 @@ Implements a local package index.
 from os.path import basename
 from time import time
 
-from werkzeug import secure_filename
+from werkzeug.utils import secure_filename
 
 from cheddar.exceptions import BadRequestError, ConflictError, NotFoundError
 from cheddar.index.index import Index
@@ -35,7 +35,11 @@ class LocalIndex(Index):
     def get_versions(self, name):
         self.logger.info("Getting local versions listing for: {}".format(name))
 
-        project = self.projects.get_project(name)
+        # Pip converts underscores to dashes in distribution names. e.g. Pip will search for
+        # foo-bar when the dist name is foo_bar. Workaround by searching for both names here
+        # instead of normalizing the name on package registration and upload.
+        project = (self.projects.get_project(name) or
+                   self.projects.get_project(name.replace("-", "_")))
         if project is None:
             return None
 
