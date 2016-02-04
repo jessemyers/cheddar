@@ -78,7 +78,7 @@ def is_pre_release(basename):
 
     def is_patch(part):
         # the tailing "-" is important here
-        return part == "*final-"
+        return part == "*post" or part == "*final-"
 
     # strip out patch levels indicator and their successive qualifier
     parts = [part for index, part in enumerate(parsed_version)

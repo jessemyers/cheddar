@@ -78,7 +78,7 @@ def test_name_match():
 def test_is_pre_release():
 
     def validate_is_pre_release(basename, expected):
-        eq_(is_pre_release(basename), expected)
+        eq_(is_pre_release(basename), expected, basename)
 
     cases = [("foo-1.1", False),
              ("foo-1.0.1", False),
