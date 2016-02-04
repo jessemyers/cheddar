@@ -1,1 +1,1 @@
-__version__ = '1.5'  # noqa
+__version__ = '1.4'  # noqa
